@@ -56,8 +56,8 @@ void main() async {
   await Supabase.initialize(
     url: SupabaseService.url,
     anonKey: SupabaseService.key,
-    authOptions: FlutterAuthClientOptions(
-      pkceAsyncStorage: prefsStorage,
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.implicit,
     ),
   );
   runApp(const LightCalorieApp());
