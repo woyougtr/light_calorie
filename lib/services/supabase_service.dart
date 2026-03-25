@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
+import 'supabase_auth_api.dart';
 
 class SupabaseService {
   static const String url = 'https://pjtakguinniaeaymncob.supabase.co';
@@ -20,32 +21,14 @@ class SupabaseService {
     );
   }
 
-  // 邮箱注册
+  // 邮箱注册（直接调 HTTP API，绕过 PKCE 问题）
   static Future<(AppUser?, String?)> signUp(String email, String password) async {
-    try {
-      final res = await _client.auth.signUp(
-        email: email,
-        password: password,
-      );
-      if (res.user == null) return (null, '注册未返回用户');
-      return (AppUser(id: res.user!.id, email: email, createdAt: DateTime.now()), null);
-    } catch (e) {
-      return (null, e.toString());
-    }
+    return SupabaseAuthApi.signUp(email, password);
   }
 
-  // 邮箱登录 - 使用 signInWithPassword
+  // 邮箱登录（直接调 HTTP API，绕过 PKCE 问题）
   static Future<(AppUser?, String?)> signIn(String email, String password) async {
-    try {
-      final res = await _client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-      if (res.user == null) return (null, '登录未返回用户');
-      return (AppUser(id: res.user!.id, email: email, createdAt: DateTime.now()), null);
-    } catch (e) {
-      return (null, e.toString());
-    }
+    return SupabaseAuthApi.signIn(email, password);
   }
 
   // 退出登录
