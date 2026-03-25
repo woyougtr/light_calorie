@@ -65,7 +65,12 @@ class SupabaseAuthApi {
         }
         return (null, '登录失败');
       } else {
-        return (null, _ostr(data['msg']) ?? _ostr(data['error_description']) ?? '登录失败 (${res.statusCode})');
+        // 邮箱未确认时返回友好提示
+        final msg = _ostr(data['msg']) ?? _ostr(data['error_description']) ?? '';
+        if (msg.toLowerCase().contains('email') && msg.toLowerCase().contains('confirm')) {
+          return (null, '请先去邮箱点击确认链接，然后再登录');
+        }
+        return (null, msg.isNotEmpty ? msg : '登录失败 (${res.statusCode})');
       }
     } catch (e) {
       return (null, '网络异常');
