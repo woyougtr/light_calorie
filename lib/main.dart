@@ -81,17 +81,18 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     try {
       AppUser? user;
+      String? errMsg;
       if (_isLogin) {
-        user = await SupabaseService.signIn(email, password);
-        if (user == null) _showMsg('登录失败');
+        (user, errMsg) = await SupabaseService.signIn(email, password);
+        if (user == null) _showMsg(errMsg ?? '登录失败');
         else if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainApp(user: user!)));
       } else {
         if (password.length < 6) { _showMsg('密码至少6位'); setState(() => _loading = false); return; }
-        user = await SupabaseService.signUp(email, password);
-        if (user == null) _showMsg('注册失败');
+        (user, errMsg) = await SupabaseService.signUp(email, password);
+        if (user == null) _showMsg(errMsg ?? '注册失败');
         else if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainApp(user: user!)));
       }
-    } catch (e) { _showMsg('操作异常'); }
+    } catch (e) { _showMsg('操作异常: $e'); }
     if (mounted) setState(() => _loading = false);
   }
 

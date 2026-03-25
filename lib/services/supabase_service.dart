@@ -21,30 +21,30 @@ class SupabaseService {
   }
 
   // 邮箱注册
-  static Future<AppUser?> signUp(String email, String password) async {
+  static Future<(AppUser?, String?)> signUp(String email, String password) async {
     try {
       final res = await _client.auth.signUp(
         email: email,
         password: password,
       );
-      if (res.user == null) return null;
-      return AppUser(id: res.user!.id, email: email, createdAt: DateTime.now());
+      if (res.user == null) return (null, '注册未返回用户');
+      return (AppUser(id: res.user!.id, email: email, createdAt: DateTime.now()), null);
     } catch (e) {
-      return null;
+      return (null, e.toString());
     }
   }
 
   // 邮箱登录 - 使用 signInWithPassword
-  static Future<AppUser?> signIn(String email, String password) async {
+  static Future<(AppUser?, String?)> signIn(String email, String password) async {
     try {
       final res = await _client.auth.signInWithPassword(
         email: email,
         password: password,
       );
-      if (res.user == null) return null;
-      return AppUser(id: res.user!.id, email: email, createdAt: DateTime.now());
+      if (res.user == null) return (null, '登录未返回用户');
+      return (AppUser(id: res.user!.id, email: email, createdAt: DateTime.now()), null);
     } catch (e) {
-      return null;
+      return (null, e.toString());
     }
   }
 
