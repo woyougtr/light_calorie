@@ -182,26 +182,68 @@ class _MainAppState extends State<MainApp> {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   final AppUser user;
   const HomePage({super.key, required this.user});
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  List<FoodRecord> _todayRecords = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodayData();
+  }
+
+  Future<void> _loadTodayData() async {
+    final records = await SupabaseService.getFoodRecords(widget.user.id, DateTime.now());
+    if (mounted) setState(() { _todayRecords = records; _loading = false; });
+  }
+
+  double get _totalCalories => _todayRecords.fold(0, (sum, r) => sum + r.calorie);
+
+  @override
   Widget build(BuildContext context) {
+    final goal = widget.user.dailyCalorieGoal;
+    final consumed = _totalCalories;
+    final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
+
     return Scaffold(
       appBar: AppBar(title: const Text('轻卡')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('📊 今日进度', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          LinearProgressIndicator(value: 0.6, backgroundColor: Colors.grey[200], color: AppColors.secondary),
-        ]))),
-        const SizedBox(height: 16),
-        Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('🔥 今日摄入', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          const Center(child: Text('780 / 1800 大卡', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
-        ]))),
-      ]),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(onRefresh: _loadTodayData, child: ListView(padding: const EdgeInsets.all(16), children: [
+              Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('📊 今日进度', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                LinearProgressIndicator(value: progress, backgroundColor: Colors.grey[200], color: AppColors.secondary, minHeight: 8),
+                const SizedBox(height: 8),
+                Text('${(progress * 100).toInt()}%', style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
+              ]))),
+              const SizedBox(height: 16),
+              Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('🔥 今日摄入', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                Center(child: Text('$consumed / $goal 大卡', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
+              ]))),
+              const SizedBox(height: 16),
+              Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('🍽️ 今日记录 ${_todayRecords.length} 条', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                if (_todayRecords.isEmpty) const Text('暂无记录，点击底部"记录"添加', style: TextStyle(color: Colors.grey)),
+                for (final r in _todayRecords) ListTile(
+                  dense: true, contentPadding: EdgeInsets.zero,
+                  leading: Text(r.mealType.icon, style: const TextStyle(fontSize: 20)),
+                  title: Text(r.foodName),
+                  subtitle: Text('${r.grams.toInt()}g'),
+                  trailing: Text('${r.calorie.toInt()} kcal', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                ),
+              ]))),
+            ])),
     );
   }
 }
