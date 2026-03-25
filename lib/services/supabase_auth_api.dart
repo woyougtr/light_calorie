@@ -30,9 +30,17 @@ class SupabaseAuthApi {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
 
       if (res.statusCode == 200 || res.statusCode == 201) {
+        // 如果有 session 说明注册成功直接登录了
+        if (data['session'] != null) {
+          final user = data['user'] as Map<String, dynamic>?;
+          if (user != null) {
+            return (AppUser(id: user['id'].toString(), email: email, createdAt: DateTime.now()), null);
+          }
+        }
+        // 有 id 但没有 session，说明邮箱需要确认
         final id = data['id'];
         if (id != null) {
-          return (AppUser(id: id.toString(), email: email, createdAt: DateTime.now()), null);
+          return (null, '注册成功！请去邮箱点击链接完成确认，然后再登录');
         }
         return (null, _ostr(data['msg']) ?? '注册失败');
       } else {
