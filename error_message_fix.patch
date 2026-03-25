@@ -1,0 +1,71 @@
+diff --git a/lib/main.dart b/lib/main.dart
+index fa63940..3aaeb2e 100644
+--- a/lib/main.dart
++++ b/lib/main.dart
+@@ -81,17 +81,18 @@ class _LoginPageState extends State<LoginPage> {
+     setState(() => _loading = true);
+     try {
+       AppUser? user;
++      String? errMsg;
+       if (_isLogin) {
+-        user = await SupabaseService.signIn(email, password);
+-        if (user == null) _showMsg('登录失败');
++        (user, errMsg) = await SupabaseService.signIn(email, password);
++        if (user == null) _showMsg(errMsg ?? '登录失败');
+         else if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainApp(user: user!)));
+       } else {
+         if (password.length < 6) { _showMsg('密码至少6位'); setState(() => _loading = false); return; }
+-        user = await SupabaseService.signUp(email, password);
+-        if (user == null) _showMsg('注册失败');
++        (user, errMsg) = await SupabaseService.signUp(email, password);
++        if (user == null) _showMsg(errMsg ?? '注册失败');
+         else if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainApp(user: user!)));
+       }
+-    } catch (e) { _showMsg('操作异常'); }
++    } catch (e) { _showMsg('操作异常: $e'); }
+     if (mounted) setState(() => _loading = false);
+   }
+ 
+diff --git a/lib/services/supabase_service.dart b/lib/services/supabase_service.dart
+index 910a50a..290ecbc 100644
+--- a/lib/services/supabase_service.dart
++++ b/lib/services/supabase_service.dart
+@@ -21,30 +21,30 @@ class SupabaseService {
+   }
+ 
+   // 邮箱注册
+-  static Future<AppUser?> signUp(String email, String password) async {
++  static Future<(AppUser?, String?)> signUp(String email, String password) async {
+     try {
+       final res = await _client.auth.signUp(
+         email: email,
+         password: password,
+       );
+-      if (res.user == null) return null;
+-      return AppUser(id: res.user!.id, email: email, createdAt: DateTime.now());
++      if (res.user == null) return (null, '注册未返回用户');
++      return (AppUser(id: res.user!.id, email: email, createdAt: DateTime.now()), null);
+     } catch (e) {
+-      return null;
++      return (null, e.toString());
+     }
+   }
+ 
+   // 邮箱登录 - 使用 signInWithPassword
+-  static Future<AppUser?> signIn(String email, String password) async {
++  static Future<(AppUser?, String?)> signIn(String email, String password) async {
+     try {
+       final res = await _client.auth.signInWithPassword(
+         email: email,
+         password: password,
+       );
+-      if (res.user == null) return null;
+-      return AppUser(id: res.user!.id, email: email, createdAt: DateTime.now());
++      if (res.user == null) return (null, '登录未返回用户');
++      return (AppUser(id: res.user!.id, email: email, createdAt: DateTime.now()), null);
+     } catch (e) {
+-      return null;
++      return (null, e.toString());
+     }
+   }
+ 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'data/foods.dart';
 import 'models/models.dart';
 import 'services/supabase_service.dart';
@@ -17,7 +18,13 @@ class AppColors {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Supabase.initialize(url: SupabaseService.url, anonKey: SupabaseService.key);
+  await Supabase.initialize(
+    url: SupabaseService.url,
+    anonKey: SupabaseService.key,
+    authOptions: FlutterAuthClientOptions(
+      pkceAsyncStorage: SharedPreferencesGotrueAsyncStorage(),
+    ),
+  );
   runApp(const LightCalorieApp());
 }
 
