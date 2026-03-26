@@ -91,7 +91,7 @@ class FoodRecord {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
+    if (id.isNotEmpty) 'id': id,
     'user_id': oderId,
     'food_id': foodId,
     'food_name': foodName,
@@ -135,7 +135,7 @@ class CheckIn {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
+    if (id.isNotEmpty) 'id': id,
     'user_id': oderId,
     'date': date.toIso8601String().split('T')[0],
     'photo_url': photoUrl,
@@ -172,7 +172,7 @@ class WeightRecord {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
+    if (id.isNotEmpty) 'id': id,
     'user_id': oderId,
     'weight': weight,
     'date': date.toIso8601String().split('T')[0],
