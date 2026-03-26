@@ -54,6 +54,9 @@ dependencies:
   # 图表库
   fl_chart: ^0.68.0
 
+  # 日历库
+  table_calendar: ^3.0.9
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

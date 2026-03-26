@@ -169,4 +169,65 @@ class SupabaseService {
       return [];
     }
   }
+
+  // 添加运动记录
+  static Future<bool> addExerciseRecord(ExerciseRecord record) async {
+    try {
+      await client.from('exercise_records').insert(record.toJson());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 获取运动记录
+  static Future<List<ExerciseRecord>> getExerciseRecords(String userId, {DateTime? date, int limit = 30}) async {
+    try {
+      final query = client
+          .from('exercise_records')
+          .select();
+      
+      if (date != null) {
+        final dateStr = date.toIso8601String().split('T')[0];
+        final data = await query
+            .eq('user_id', userId)
+            .eq('date', dateStr)
+            .order('created_at', ascending: false);
+        return (data as List).map((e) => ExerciseRecord.fromJson(e as Map<String, dynamic>)).toList();
+      }
+      
+      final data = await query
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(limit);
+      return (data as List).map((e) => ExerciseRecord.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // 获取今日运动总消耗
+  static Future<double> getTodayExerciseCalorie(String userId) async {
+    try {
+      final today = DateTime.now();
+      final dateStr = today.toIso8601String().split('T')[0];
+      final data = await client
+          .from('exercise_records')
+          .select('calorie')
+          .eq('user_id', userId)
+          .eq('date', dateStr);
+      
+      if (data == null || data.isEmpty) return 0.0;
+      
+      double total = 0.0;
+      for (final item in data as List) {
+        if (item != null && item['calorie'] != null) {
+          total += (item['calorie'] as num).toDouble();
+        }
+      }
+      return total;
+    } catch (e) {
+      return 0.0;
+    }
+  }
 }

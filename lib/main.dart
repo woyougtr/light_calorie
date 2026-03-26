@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'data/foods.dart';
 import 'models/models.dart';
 import 'services/supabase_service.dart';
@@ -1072,7 +1073,7 @@ class _RecordPageState extends State<RecordPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildNutrientPreview('热量', '${food.calorieFor(selectedGrams).toInt()}', 'kcal'),
+                    _buildNutrientPreview('热量', '${food.calorieFor(selectedGrams).toStringAsFixed(0)}', 'kcal'),
                     _buildNutrientPreview('碳水', '${(food.carbPer100g * selectedGrams / 100).toInt()}', 'g'),
                     _buildNutrientPreview('蛋白质', '${(food.proteinPer100g * selectedGrams / 100).toInt()}', 'g'),
                     _buildNutrientPreview('脂肪', '${(food.fatPer100g * selectedGrams / 100).toInt()}', 'g'),
@@ -1211,21 +1212,495 @@ class _RecordPageState extends State<RecordPage> {
   }
 }
 
-class CheckInPage extends StatelessWidget {
+class CheckInPage extends StatefulWidget {
   final AppUser user;
   const CheckInPage({super.key, required this.user});
+  @override
+  State<CheckInPage> createState() => _CheckInPageState();
+}
+
+class _CheckInPageState extends State<CheckInPage> {
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  Map<DateTime, List<String>> _checkInEvents = {};
+  int _consecutiveDays = 0;
+  int _totalCheckIns = 0;
+  
+  // 饮水记录
+  int _waterCount = 0;
+  static const int _dailyWaterGoal = 8; // 每日8杯水目标
+  
+  // 运动记录
+  final List<ExerciseRecord> _todayExercises = <ExerciseRecord>[];
+  double _todayExerciseCalorie = 0.0;
+  
+  // 安全获取运动消耗字符串
+  String get _exerciseCalorieText {
+    try {
+      return _todayExerciseCalorie.toStringAsFixed(0);
+    } catch (e) {
+      return '0';
+    }
+  }
+  
+  // 安全检查运动列表是否为空
+  bool get _hasExercises {
+    try {
+      return _todayExercises.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = _focusedDay;
+    _loadCheckInData();
+    _loadWaterData();
+    _loadExerciseData();
+  }
+
+  Future<void> _loadCheckInData() async {
+    // 从数据库加载打卡记录
+    final checkIns = await SupabaseService.getCheckIns(widget.user.id);
+    final Map<DateTime, List<String>> events = {};
+    
+    for (final checkIn in checkIns) {
+      final date = DateTime(checkIn.date.year, checkIn.date.month, checkIn.date.day);
+      events[date] = events[date] ?? [];
+      events[date]!.add('打卡');
+    }
+    
+    // 计算连续打卡天数
+    int consecutive = 0;
+    DateTime checkDate = DateTime.now();
+    while (events.containsKey(DateTime(checkDate.year, checkDate.month, checkDate.day))) {
+      consecutive++;
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+    
+    if (mounted) {
+      setState(() {
+        _checkInEvents = events;
+        _consecutiveDays = consecutive;
+        _totalCheckIns = checkIns.length;
+      });
+    }
+  }
+
+  Future<void> _loadWaterData() async {
+    // 加载今日饮水记录
+    final today = DateTime.now();
+    // 这里应该从数据库加载，先模拟
+    if (mounted) setState(() => _waterCount = 0);
+  }
+
+  void _addWater() {
+    if (_waterCount < _dailyWaterGoal) {
+      setState(() => _waterCount++);
+      _saveWaterData();
+    }
+  }
+
+  Future<void> _saveWaterData() async {
+    // 保存饮水记录到数据库
+    // 这里需要添加 SupabaseService 方法
+  }
+
+  Future<void> _loadExerciseData() async {
+    final exercises = await SupabaseService.getExerciseRecords(widget.user.id, date: DateTime.now());
+    final calorie = await SupabaseService.getTodayExerciseCalorie(widget.user.id);
+    if (mounted) {
+      setState(() {
+        _todayExercises.clear();
+        _todayExercises.addAll(exercises ?? []);
+        _todayExerciseCalorie = calorie ?? 0.0;
+      });
+    }
+  }
+
+  List<String> _getEventsForDay(DateTime day) {
+    return _checkInEvents[DateTime(day.year, day.month, day.day)] ?? [];
+  }
+
+  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
+    setState(() {
+      _selectedDay = selectedDay;
+      _focusedDay = focusedDay;
+    });
+  }
+
+  void _onRangeSelected(DateTime? start, DateTime? end, DateTime focusedDay) {
+    setState(() {
+      _selectedDay = start;
+      _focusedDay = focusedDay;
+    });
+  }
+
+  // 显示运动打卡弹窗
+  void _showExerciseDialog() {
+    ExerciseType selectedType = ExerciseType.running;
+    int duration = 30;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+              const Text('记录运动', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              
+              // 运动类型选择
+              const Text('选择运动类型', style: TextStyle(fontSize: 14, color: AppColors.lightText)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: ExerciseType.values.map((type) {
+                  final isSelected = selectedType == type;
+                  return ChoiceChip(
+                    avatar: Text(type.icon, style: const TextStyle(fontSize: 16)),
+                    label: Text(type.label),
+                    selected: isSelected,
+                    selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setDialogState(() => selectedType = type);
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              
+              // 时长选择
+              const Text('运动时长', style: TextStyle(fontSize: 14, color: AppColors.lightText)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: duration > 5 ? () => setDialogState(() => duration -= 5) : null,
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  Text('$duration 分钟', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    onPressed: duration < 180 ? () => setDialogState(() => duration += 5) : null,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Slider(
+                value: duration.toDouble(),
+                min: 5,
+                max: 180,
+                divisions: 35,
+                label: '$duration分钟',
+                onChanged: (value) => setDialogState(() => duration = value.round()),
+              ),
+              const SizedBox(height: 20),
+              
+              // 消耗预览
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.local_fire_department, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      '预计消耗 ${selectedType.calculateCalorie(duration).toStringAsFixed(0)} 大卡',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final record = ExerciseRecord(
+                      id: '',
+                      userId: widget.user.id,
+                      type: selectedType,
+                      duration: duration,
+                      calorie: selectedType.calculateCalorie(duration),
+                      date: DateTime.now(),
+                      createdAt: DateTime.now(),
+                    );
+                    
+                    final success = await SupabaseService.addExerciseRecord(record);
+                    if (success && mounted) {
+                      Navigator.pop(context);
+                      _loadExerciseData();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('已记录 ${selectedType.label} $duration 分钟')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check),
+                  label: const Text('确认打卡'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('打卡日历')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
-          const Text('🏆', style: TextStyle(fontSize: 40)),
-          const SizedBox(height: 8),
-          const Text('连续打卡 12 天', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
-        ]))),
+        // 连续打卡卡片
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                const Text('🏆', style: TextStyle(fontSize: 40)),
+                const SizedBox(height: 8),
+                Text('连续打卡 $_consecutiveDays 天', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                const SizedBox(height: 4),
+                Text('累计打卡 $_totalCheckIns 天', style: TextStyle(color: Colors.grey[600])),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
-        ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.camera_alt), label: const Text('拍照打卡')),
+        
+        // 饮水记录卡片
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('💧 今日饮水', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text('$_waterCount / $_dailyWaterGoal 杯', style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // 水杯图标
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(_dailyWaterGoal, (index) {
+                    final isFilled = index < _waterCount;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (index < _waterCount) {
+                            _waterCount = index;
+                          } else {
+                            _waterCount = index + 1;
+                          }
+                        });
+                        _saveWaterData();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 32,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isFilled ? AppColors.secondary.withValues(alpha: 0.2) : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: isFilled ? AppColors.secondary : Colors.grey[400]!, width: 2),
+                        ),
+                        child: Icon(
+                          Icons.water_drop,
+                          size: 20,
+                          color: isFilled ? AppColors.secondary : Colors.grey[400],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 12),
+                // 快捷添加按钮
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _waterCount < _dailyWaterGoal ? _addWater : null,
+                      icon: const Icon(Icons.add),
+                      label: const Text('喝一杯'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (_waterCount >= _dailyWaterGoal)
+                      const Chip(
+                        label: Text('✅ 今日目标达成', style: TextStyle(fontSize: 12)),
+                        backgroundColor: Color(0xFFE8F8F5),
+                        side: BorderSide(color: Color(0xFF00B894)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // 日历视图
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: TableCalendar(
+              firstDay: DateTime.utc(2024, 1, 1),
+              lastDay: DateTime.utc(2026, 12, 31),
+              focusedDay: _focusedDay,
+              calendarFormat: _calendarFormat,
+              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+              onDaySelected: _onDaySelected,
+              onRangeSelected: _onRangeSelected,
+              onFormatChanged: (format) {
+                setState(() => _calendarFormat = format);
+              },
+              onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+              eventLoader: _getEventsForDay,
+              calendarStyle: CalendarStyle(
+                markersMaxCount: 3,
+                markerDecoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                todayDecoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                selectedDecoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              headerStyle: const HeaderStyle(
+                formatButtonVisible: true,
+                titleCentered: true,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // 选中日期详情
+        if (_selectedDay != null) ...[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_selectedDay!.month}月${_selectedDay!.day}日',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_getEventsForDay(_selectedDay!).isEmpty)
+                    const Text('当日无打卡记录', style: TextStyle(color: Colors.grey))
+                  else
+                    ..._getEventsForDay(_selectedDay!).map((event) => ListTile(
+                      leading: const Icon(Icons.check_circle, color: AppColors.success),
+                      title: Text(event),
+                      dense: true,
+                    )),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // 运动打卡卡片
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('🏃 今日运动', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text('消耗 $_exerciseCalorieText 大卡', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (!_hasExercises)
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(Icons.fitness_center, size: 48, color: Colors.grey[300]),
+                        const SizedBox(height: 8),
+                        Text('还没有运动记录', style: TextStyle(color: Colors.grey[600])),
+                      ],
+                    ),
+                  )
+                else
+                  if (_hasExercises)
+                  ..._todayExercises.map((exercise) => ListTile(
+                    leading: Text(exercise.type.icon, style: const TextStyle(fontSize: 24)),
+                    title: Text(exercise.type.label),
+                    subtitle: Text('${exercise.duration} 分钟'),
+                    trailing: Text('${(exercise.calorie ?? 0).toStringAsFixed(0)} kcal', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
+                    dense: true,
+                  )),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _showExerciseDialog,
+                    icon: const Icon(Icons.add),
+                    label: const Text('记录运动'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // 拍照打卡按钮
+        ElevatedButton.icon(
+          onPressed: () {},
+          icon: const Icon(Icons.camera_alt),
+          label: const Text('拍照打卡'),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
       ]),
     );
   }

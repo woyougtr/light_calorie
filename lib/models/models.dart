@@ -196,3 +196,90 @@ class DailyTask {
     this.completedAt,
   });
 }
+
+// 运动类型 - 卡路里数据参考：运动医学研究及Apple Watch/Google Fit等主流健康应用
+enum ExerciseType {
+  // 高强度运动
+  rope('跳绳', '🪢', 140.0),        // 每10分钟140大卡，高强度
+  swimming('游泳', '🏊', 110.0),    // 每10分钟110大卡，全身运动
+  basketball('篮球', '🏀', 100.0),  // 每10分钟100大卡，爆发性运动
+  running('跑步', '🏃', 95.0),      // 每10分钟95大卡，中等配速8-10km/h
+  
+  // 中强度运动
+  fitness('健身', '💪', 85.0),      // 每10分钟85大卡，力量训练
+  badminton('羽毛球', '🏸', 75.0),  // 每10分钟75大卡，间歇性爆发
+  cycling('骑行', '🚴', 70.0),      // 每10分钟70大卡，中等速度20-25km/h
+  
+  // 低强度运动
+  walking('健走', '🚶', 45.0),      // 每10分钟45大卡，快走6-7km/h
+  yoga('瑜伽', '🧘', 30.0),         // 每10分钟30大卡，舒缓拉伸
+  other('其他', '🎯', 60.0);         // 每10分钟60大卡，默认中等强度
+
+  final String label;
+  final String icon;
+  final double caloriePer10Min; // 每10分钟消耗大卡（基于60-70kg成年人）
+
+  const ExerciseType(this.label, this.icon, this.caloriePer10Min);
+
+  // 计算消耗卡路里
+  // 公式：每10分钟消耗 × (分钟数/10)
+  // 示例：跑步30分钟 = 95 × 3 = 285大卡
+  double calculateCalorie(int minutes) {
+    return (caloriePer10Min * minutes / 10);
+  }
+  
+  // 获取描述信息
+  String get description {
+    return '$label：每10分钟约${caloriePer10Min.toInt()}大卡';
+  }
+}
+
+// 运动记录
+class ExerciseRecord {
+  final String id;
+  final String userId;
+  final ExerciseType type;
+  final int duration; // 分钟
+  final double calorie;
+  final DateTime date;
+  final String? note;
+  final DateTime createdAt;
+
+  ExerciseRecord({
+    required this.id,
+    required this.userId,
+    required this.type,
+    required this.duration,
+    required this.calorie,
+    required this.date,
+    this.note,
+    required this.createdAt,
+  });
+
+  factory ExerciseRecord.fromJson(Map<String, dynamic> json) {
+    return ExerciseRecord(
+      id: json['id'] ?? '',
+      userId: json['user_id'] ?? '',
+      type: ExerciseType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => ExerciseType.other,
+      ),
+      duration: json['duration'] ?? 0,
+      calorie: (json['calorie'] ?? 0).toDouble(),
+      date: DateTime.tryParse(json['date'] ?? '') ?? DateTime.now(),
+      note: json['note'],
+      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    if (id.isNotEmpty) 'id': id,
+    'user_id': userId,
+    'type': type.name,
+    'duration': duration,
+    'calorie': calorie,
+    'date': date.toIso8601String().split('T')[0],
+    'note': note,
+    'created_at': createdAt.toIso8601String(),
+  };
+}
