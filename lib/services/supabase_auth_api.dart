@@ -68,14 +68,14 @@ class SupabaseAuthApi {
 
       if (res.statusCode == 200) {
         final user = data['user'] as Map<String, dynamic>?;
-        final session = data['session'] as Map<String, dynamic>?;
-        final accessToken = session?['access_token']?.toString();
-        if (user != null) {
+        // access_token 直接在根级别，不在 session 嵌套中
+        final accessToken = data['access_token']?.toString();
+        if (user != null && accessToken != null) {
           final userId = user['id'];
           final userEmail = user['email'] ?? email;
           return (AppUser(id: userId.toString(), email: userEmail.toString(), createdAt: DateTime.now()), accessToken, null);
         }
-        return (null, null, '登录失败');
+        return (null, null, '登录失败：未获取到认证信息');
       } else {
         // 邮箱未确认时返回友好提示
         final msg = _ostr(data['msg']) ?? _ostr(data['error_description']) ?? '';
