@@ -169,16 +169,35 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   int _currentIndex = 0;
+  final GlobalKey<_HomePageState> _homePageKey = GlobalKey();
+
+  void _onNavChanged(int index) {
+    // 从记录页(1)或其他页面切换回首页(0)时刷新数据
+    if (index == 0 && _currentIndex != 0) {
+      _homePageKey.currentState?.loadTodayData();
+    }
+    setState(() => _currentIndex = index);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: [HomePage(user: widget.user), RecordPage(user: widget.user), CheckInPage(user: widget.user), ProfilePage(user: widget.user)]),
-      bottomNavigationBar: NavigationBar(selectedIndex: _currentIndex, onDestinationSelected: (i) => setState(() => _currentIndex = i), destinations: const [
-        NavigationDestination(icon: Icon(Icons.home), label: '首页'),
-        NavigationDestination(icon: Icon(Icons.edit), label: '记录'),
-        NavigationDestination(icon: Icon(Icons.calendar_today), label: '打卡'),
-        NavigationDestination(icon: Icon(Icons.person), label: '我的'),
+      body: IndexedStack(index: _currentIndex, children: [
+        HomePage(key: _homePageKey, user: widget.user),
+        RecordPage(user: widget.user),
+        CheckInPage(user: widget.user),
+        ProfilePage(user: widget.user),
       ]),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: _onNavChanged,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: '首页'),
+          NavigationDestination(icon: Icon(Icons.edit), label: '记录'),
+          NavigationDestination(icon: Icon(Icons.calendar_today), label: '打卡'),
+          NavigationDestination(icon: Icon(Icons.person), label: '我的'),
+        ],
+      ),
     );
   }
 }
@@ -198,10 +217,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadTodayData();
+    loadTodayData();
   }
 
-  Future<void> _loadTodayData() async {
+  /// 加载今日数据，可以被外部调用刷新
+  Future<void> loadTodayData() async {
+    setState(() => _loading = true);
     final records = await SupabaseService.getFoodRecords(widget.user.id, DateTime.now());
     final weights = await SupabaseService.getWeightRecords(widget.user.id, limit: 30);
     if (mounted) setState(() { _todayRecords = records; _weightRecords = weights; _loading = false; });
@@ -262,7 +283,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(title: const Text('轻卡')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(onRefresh: _loadTodayData, child: ListView(padding: const EdgeInsets.all(16), children: [
+          : RefreshIndicator(onRefresh: loadTodayData, child: ListView(padding: const EdgeInsets.all(16), children: [
               // 今日打卡进度卡片
               Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('📊 今日打卡进度', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
