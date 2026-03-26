@@ -835,7 +835,7 @@ class _RecordPageState extends State<RecordPage> {
       createdAt: DateTime.now(),
     );
     
-    final success = await SupabaseService.addFoodRecord(record);
+    final (success, errorMsg) = await SupabaseService.addFoodRecord(record);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('已添加 ${food.name} ${grams.toInt()}g')),
@@ -843,7 +843,7 @@ class _RecordPageState extends State<RecordPage> {
       _loadTodayRecords();
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('添加失败，请重试')),
+        SnackBar(content: Text(errorMsg ?? '添加失败，请重试')),
       );
     }
   }

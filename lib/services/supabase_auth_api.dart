@@ -17,7 +17,7 @@ class SupabaseAuthApi {
   static String? _ostr(dynamic v) => v?.toString();
 
   /// 注册
-  static Future<(AppUser?, String?)> signUp(String email, String password) async {
+  static Future<(AppUser?, String?, String?)> signUp(String email, String password) async {
     try {
       final res = await http.post(
         Uri.parse('$_url/auth/v1/signup'),
@@ -31,28 +31,30 @@ class SupabaseAuthApi {
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         // 如果有 session 说明注册成功直接登录了
+        final session = data['session'] as Map<String, dynamic>?;
+        final accessToken = session?['access_token']?.toString();
         if (data['session'] != null) {
           final user = data['user'] as Map<String, dynamic>?;
           if (user != null) {
-            return (AppUser(id: user['id'].toString(), email: email, createdAt: DateTime.now()), null);
+            return (AppUser(id: user['id'].toString(), email: email, createdAt: DateTime.now()), accessToken, null);
           }
         }
         // 有 id 但没有 session，说明邮箱需要确认
         final id = data['id'];
         if (id != null) {
-          return (null, '注册成功！请去邮箱点击链接完成确认，然后再登录');
+          return (null, null, '注册成功！请去邮箱点击链接完成确认，然后再登录');
         }
-        return (null, _ostr(data['msg']) ?? '注册失败');
+        return (null, null, _ostr(data['msg']) ?? '注册失败');
       } else {
-        return (null, _ostr(data['msg']) ?? _ostr(data['error']) ?? '注册失败 (${res.statusCode})');
+        return (null, null, _ostr(data['msg']) ?? _ostr(data['error']) ?? '注册失败 (${res.statusCode})');
       }
     } catch (e) {
-      return (null, '网络异常');
+      return (null, null, '网络异常');
     }
   }
 
   /// 登录
-  static Future<(AppUser?, String?)> signIn(String email, String password) async {
+  static Future<(AppUser?, String?, String?)> signIn(String email, String password) async {
     try {
       final res = await http.post(
         Uri.parse('$_url/auth/v1/token?grant_type=password'),
@@ -66,22 +68,24 @@ class SupabaseAuthApi {
 
       if (res.statusCode == 200) {
         final user = data['user'] as Map<String, dynamic>?;
+        final session = data['session'] as Map<String, dynamic>?;
+        final accessToken = session?['access_token']?.toString();
         if (user != null) {
           final userId = user['id'];
           final userEmail = user['email'] ?? email;
-          return (AppUser(id: userId.toString(), email: userEmail.toString(), createdAt: DateTime.now()), null);
+          return (AppUser(id: userId.toString(), email: userEmail.toString(), createdAt: DateTime.now()), accessToken, null);
         }
-        return (null, '登录失败');
+        return (null, null, '登录失败');
       } else {
         // 邮箱未确认时返回友好提示
         final msg = _ostr(data['msg']) ?? _ostr(data['error_description']) ?? '';
         if (msg.toLowerCase().contains('email') && msg.toLowerCase().contains('confirm')) {
-          return (null, '请先去邮箱点击确认链接，然后再登录');
+          return (null, null, '请先去邮箱点击确认链接，然后再登录');
         }
-        return (null, msg.isNotEmpty ? msg : '登录失败 (${res.statusCode})');
+        return (null, null, msg.isNotEmpty ? msg : '登录失败 (${res.statusCode})');
       }
     } catch (e) {
-      return (null, '网络异常');
+      return (null, null, '网络异常');
     }
   }
 }
