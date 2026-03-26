@@ -655,20 +655,25 @@ class _RecordPageState extends State<RecordPage> {
                 ),
               )
             else
-              ...records.map((r) => ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                leading: Text(mealType.icon, style: const TextStyle(fontSize: 18)),
-                title: Text(r.foodName),
-                subtitle: Text('${r.grams.toInt()}g'),
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text('${r.calorie.toInt()} kcal', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
-                    onPressed: () => _deleteRecord(r.id),
-                  ),
-                ]),
-              )),
+              ...records.map((r) {
+                // 根据 foodId 查找食物图标
+                final food = foodDatabase.where((f) => f.id == r.foodId).firstOrNull;
+                final icon = food?.icon ?? mealType.icon;
+                return ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  leading: Text(icon, style: const TextStyle(fontSize: 18)),
+                  title: Text(r.foodName),
+                  subtitle: Text('${r.grams.toInt()}g'),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('${r.calorie.toInt()} kcal', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
+                      onPressed: () => _deleteRecord(r.id),
+                    ),
+                  ]),
+                );
+              }),
           ],
         ),
       ),
