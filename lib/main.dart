@@ -1254,7 +1254,6 @@ class CheckInPage extends StatefulWidget {
 }
 
 class _CheckInPageState extends State<CheckInPage> {
-  CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<String>> _checkInEvents = {};
@@ -1271,15 +1270,6 @@ class _CheckInPageState extends State<CheckInPage> {
   
   // 本地运动记录缓存（用于测试，后续可迁移到数据库）
   static final List<ExerciseRecord> _localExerciseRecords = [];
-  
-  // 安全获取运动消耗字符串
-  String get _exerciseCalorieText {
-    try {
-      return _todayExerciseCalorie.toStringAsFixed(0);
-    } catch (e) {
-      return '0';
-    }
-  }
   
   // 安全检查运动列表是否为空
   bool get _hasExercises {
@@ -1332,13 +1322,6 @@ class _CheckInPageState extends State<CheckInPage> {
     final today = DateTime.now();
     // 这里应该从数据库加载，先模拟
     if (mounted) setState(() => _waterCount = 0);
-  }
-
-  void _addWater() {
-    if (_waterCount < _dailyWaterGoal) {
-      setState(() => _waterCount++);
-      _saveWaterData();
-    }
   }
 
   Future<void> _saveWaterData() async {
@@ -1394,33 +1377,9 @@ class _CheckInPageState extends State<CheckInPage> {
     }).toList();
   }
 
-  // 构建选中日期的运动记录列表Widget
-  Widget _buildSelectedDayExerciseList() {
-    final exercises = _getExercisesForDay(_selectedDay!);
-    if (exercises.isEmpty) return const SizedBox.shrink();
-    
-    return Column(
-      children: exercises.map((exercise) => ListTile(
-        leading: Text(exercise.type.icon, style: const TextStyle(fontSize: 24)),
-        title: Text(exercise.type.label),
-        subtitle: Text('${exercise.duration} 分钟'),
-        trailing: Text('${exercise.calorie.toStringAsFixed(0)} kcal', 
-          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
-        dense: true,
-      )).toList(),
-    );
-  }
-
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       _selectedDay = selectedDay;
-      _focusedDay = focusedDay;
-    });
-  }
-
-  void _onRangeSelected(DateTime? start, DateTime? end, DateTime focusedDay) {
-    setState(() {
-      _selectedDay = start;
       _focusedDay = focusedDay;
     });
   }
@@ -1568,233 +1527,530 @@ class _CheckInPageState extends State<CheckInPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isToday = _selectedDay != null &&
+        _selectedDay!.year == DateTime.now().year &&
+        _selectedDay!.month == DateTime.now().month &&
+        _selectedDay!.day == DateTime.now().day;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('打卡日历')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        // 连续打卡卡片
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const Text('🏆', style: TextStyle(fontSize: 40)),
-                const SizedBox(height: 8),
-                Text('连续打卡 $_consecutiveDays 天', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                const SizedBox(height: 4),
-                Text('累计打卡 $_totalCheckIns 天', style: TextStyle(color: Colors.grey[600])),
-              ],
-            ),
+      appBar: AppBar(
+        title: const Text('打卡'),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              setState(() => _selectedDay = DateTime.now());
+            },
+            icon: const Icon(Icons.today, size: 18),
+            label: const Text('今天', style: TextStyle(color: Colors.white)),
           ),
-        ),
-        const SizedBox(height: 16),
-        
-        // 饮水记录卡片
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('💧 今日饮水', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    Text('$_waterCount / $_dailyWaterGoal 杯', style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // 水杯图标
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(_dailyWaterGoal, (index) {
-                    final isFilled = index < _waterCount;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          if (index < _waterCount) {
-                            _waterCount = index;
-                          } else {
-                            _waterCount = index + 1;
-                          }
-                        });
-                        _saveWaterData();
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 32,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isFilled ? AppColors.secondary.withValues(alpha: 0.2) : Colors.grey[200],
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: isFilled ? AppColors.secondary : Colors.grey[400]!, width: 2),
-                        ),
-                        child: Icon(
-                          Icons.water_drop,
-                          size: 20,
-                          color: isFilled ? AppColors.secondary : Colors.grey[400],
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 12),
-                // 快捷添加按钮
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _waterCount < _dailyWaterGoal ? _addWater : null,
-                      icon: const Icon(Icons.add),
-                      label: const Text('喝一杯'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    if (_waterCount >= _dailyWaterGoal)
-                      const Chip(
-                        label: Text('✅ 今日目标达成', style: TextStyle(fontSize: 12)),
-                        backgroundColor: Color(0xFFE8F8F5),
-                        side: BorderSide(color: Color(0xFF00B894)),
-                      ),
-                  ],
-                ),
-              ],
-            ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await _loadCheckInData();
+          _loadLocalExerciseData();
+        },
+        child: ListView(padding: const EdgeInsets.all(16), children: [
+          // 顶部统计行
+          Row(
+            children: [
+              Expanded(child: _buildStatCard('🏆', '连续 $_consecutiveDays 天', AppColors.primary)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildStatCard('📅', '累计 $_totalCheckIns 天', AppColors.secondary)),
+            ],
           ),
-        ),
-        const SizedBox(height: 16),
-        
-        // 日历视图
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: TableCalendar(
-              firstDay: DateTime.utc(2024, 1, 1),
-              lastDay: DateTime.utc(2026, 12, 31),
-              focusedDay: _focusedDay,
-              calendarFormat: _calendarFormat,
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: _onDaySelected,
-              onRangeSelected: _onRangeSelected,
-              onFormatChanged: (format) {
-                setState(() => _calendarFormat = format);
-              },
-              onPageChanged: (focusedDay) => _focusedDay = focusedDay,
-              eventLoader: _getEventsForDay,
-              calendarStyle: CalendarStyle(
-                markersMaxCount: 3,
-                markerDecoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                todayDecoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.5),
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: true,
-                titleCentered: true,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        
-        // 选中日期详情
-        if (_selectedDay != null) ...[
+          const SizedBox(height: 16),
+
+          // 日历卡片
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${_selectedDay!.month}月${_selectedDay!.day}日',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  // 选中日期标题
+                  if (_selectedDay != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${_selectedDay!.month}月${_selectedDay!.day}日',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          if (isToday) const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: Chip(
+                              label: Text('今天', style: TextStyle(fontSize: 10)),
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  TableCalendar(
+                    firstDay: DateTime.utc(2024, 1, 1),
+                    lastDay: DateTime.utc(2026, 12, 31),
+                    focusedDay: _focusedDay,
+                    calendarFormat: CalendarFormat.month,
+                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                    onDaySelected: _onDaySelected,
+                    onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
+                    eventLoader: _getEventsForDay,
+                    calendarStyle: CalendarStyle(
+                      markersMaxCount: 1,
+                      markerDecoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      todayDecoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      selectedDecoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    headerStyle: const HeaderStyle(
+                      formatButtonVisible: false,
+                      titleCentered: true,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  // 显示运动记录
-                  _buildSelectedDayExerciseList(),
-                  // 显示其他打卡事件
-                  if (_getEventsForDay(_selectedDay!).isNotEmpty)
-                    ..._getEventsForDay(_selectedDay!).map((event) => ListTile(
-                      leading: const Icon(Icons.check_circle, color: AppColors.success),
-                      title: Text(event),
-                      dense: true,
-                    )),
-                  // 如果都没有记录
-                  if (!_hasExerciseForDay(_selectedDay!) && _getEventsForDay(_selectedDay!).isEmpty)
-                    const Text('当日无打卡记录', style: TextStyle(color: Colors.grey)),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
-        ],
-        
-        // 运动打卡卡片
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('🏃 今日运动', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    Text('消耗 $_exerciseCalorieText 大卡', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (!_hasExercises)
-                  Center(
-                    child: Column(
-                      children: [
-                        Icon(Icons.fitness_center, size: 48, color: Colors.grey[300]),
-                        const SizedBox(height: 8),
-                        Text('还没有运动记录', style: TextStyle(color: Colors.grey[600])),
-                      ],
-                    ),
-                  )
-                else
-                  if (_hasExercises)
-                  ..._todayExercises.map((exercise) => ListTile(
-                    leading: Text(exercise.type.icon, style: const TextStyle(fontSize: 24)),
-                    title: Text(exercise.type.label),
-                    subtitle: Text('${exercise.duration} 分钟'),
-                    trailing: Text('${(exercise.calorie ?? 0).toStringAsFixed(0)} kcal', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
-                    dense: true,
-                  )),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _showExerciseDialog,
-                    icon: const Icon(Icons.add),
-                    label: const Text('记录运动'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+
+          // 2x2 卡片网格
+          Row(
+            children: [
+              Expanded(child: _buildModuleCard(
+                icon: '📊',
+                title: '打卡状态',
+                value: isToday ? _getTodayCheckInStatus() : '--',
+                subtitle: isToday ? '今日完成情况' : '选择日期查看',
+                color: AppColors.secondary,
+                onTap: () => _showCheckInDetailSheet(),
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: _buildModuleCard(
+                icon: '🏃',
+                title: '运动',
+                value: isToday ? '${_todayExerciseCalorie.toStringAsFixed(0)} kcal' : (_hasExerciseForDay(_selectedDay!) ? '${_getExercisesForDay(_selectedDay!).fold(0.0, (sum, e) => sum + e.calorie).toStringAsFixed(0)} kcal' : '--'),
+                subtitle: isToday ? '${_todayExercises.length} 项运动' : '选择日期查看',
+                color: AppColors.primary,
+                onTap: _showExerciseDialog,
+              )),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildModuleCard(
+                icon: '💧',
+                title: '饮水',
+                value: isToday ? '$_waterCount/$_dailyWaterGoal 杯' : '--',
+                subtitle: isToday ? (_waterCount >= _dailyWaterGoal ? '✅ 目标达成' : '再喝${_dailyWaterGoal - _waterCount}杯') : '选择日期查看',
+                color: Colors.blue,
+                onTap: () => _showWaterSheet(),
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: _buildModuleCard(
+                icon: '📈',
+                title: '本周',
+                value: '${_getWeekCompletionRate()}%',
+                subtitle: '习惯完成率',
+                color: AppColors.accent,
+                onTap: () => _showWeekStatsSheet(),
+              )),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // 选中日期的打卡详情（如果有记录）
+          if (_selectedDay != null && (isToday || _getEventsForDay(_selectedDay!).isNotEmpty || _hasExerciseForDay(_selectedDay!)))
+            _buildSelectedDayDetailCard(isToday),
+        ]),
+      ),
+    );
+  }
+
+  // 统计卡片
+  Widget _buildStatCard(String emoji, String text, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 8),
+            Text(text, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 模块卡片
+  Widget _buildModuleCard({
+    required String icon,
+    required String title,
+    required String value,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(icon, style: const TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(title, style: const TextStyle(fontSize: 14, color: AppColors.lightText)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+              const SizedBox(height: 4),
+              Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.lightText)),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
-        
-
-      ]),
+      ),
     );
+  }
+
+  // 获取今日打卡状态文字
+  String _getTodayCheckInStatus() {
+    final today = DateTime.now();
+    final hasFood = _checkInEvents.containsKey(DateTime(today.year, today.month, today.day));
+    final hasExercise = _hasExercises;
+    if (hasFood && hasExercise) return '4/4 完成';
+    if (hasFood || hasExercise) return '2/4 进行中';
+    return '0/4 未开始';
+  }
+
+  // 获取本周完成率
+  int _getWeekCompletionRate() {
+    final now = DateTime.now();
+    int total = 0;
+    int completed = 0;
+    for (int i = 0; i < 7; i++) {
+      final day = now.subtract(Duration(days: i));
+      final key = DateTime(day.year, day.month, day.day);
+      total++;
+      if (_checkInEvents.containsKey(key)) completed++;
+    }
+    if (total == 0) return 0;
+    return ((completed / total) * 100).round();
+  }
+
+  // 选中日期详情卡片
+  Widget _buildSelectedDayDetailCard(bool isToday) {
+    final exercises = isToday ? _todayExercises : _getExercisesForDay(_selectedDay!);
+    final hasCheckIn = isToday || _getEventsForDay(_selectedDay!).isNotEmpty;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${_selectedDay!.month}月${_selectedDay!.day}日 ${_getWeekdayName(_selectedDay!.weekday)}',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                if (hasCheckIn)
+                  const Chip(
+                    label: Text('已打卡', style: TextStyle(fontSize: 10, color: Colors.white)),
+                    backgroundColor: AppColors.success,
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (isToday && exercises.isNotEmpty) ...[
+              const Text('运动记录', style: TextStyle(fontSize: 12, color: AppColors.lightText)),
+              const SizedBox(height: 8),
+              ...exercises.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Text(e.type.icon, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Text(e.type.label),
+                    const Spacer(),
+                    Text('${e.duration}分钟', style: const TextStyle(color: AppColors.lightText)),
+                    const SizedBox(width: 8),
+                    Text('${e.calorie.toStringAsFixed(0)}kcal', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              )),
+            ] else if (!isToday && exercises.isNotEmpty) ...[
+              const Text('运动记录', style: TextStyle(fontSize: 12, color: AppColors.lightText)),
+              const SizedBox(height: 8),
+              ...exercises.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Text(e.type.icon, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Text(e.type.label),
+                    const Spacer(),
+                    Text('${e.duration}分钟', style: const TextStyle(color: AppColors.lightText)),
+                    const SizedBox(width: 8),
+                    Text('${e.calorie.toStringAsFixed(0)}kcal', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              )),
+            ] else ...[
+              Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey[300], size: 32),
+                    const SizedBox(height: 8),
+                    Text('当日暂无打卡记录', style: TextStyle(color: Colors.grey[500])),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getWeekdayName(int weekday) {
+    const names = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    return names[weekday];
+  }
+
+  // 显示打卡详情弹窗
+  void _showCheckInDetailSheet() {
+    final today = DateTime.now();
+    final hasFood = _checkInEvents.containsKey(DateTime(today.year, today.month, today.day));
+    final hasExercise = _hasExercises;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            const Text('今日打卡', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildCheckItem('🍽️', '饮食', hasFood),
+                _buildCheckItem('🏃', '运动', hasExercise),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              hasFood && hasExercise ? '🎉 今日目标全部完成！' : '继续加油 💪',
+              style: TextStyle(fontSize: 16, color: hasFood && hasExercise ? AppColors.success : AppColors.lightText),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCheckItem(String emoji, String label, bool completed) {
+    return Column(
+      children: [
+        Container(
+          width: 60, height: 60,
+          decoration: BoxDecoration(
+            color: completed ? AppColors.success.withValues(alpha: 0.1) : Colors.grey[100],
+            shape: BoxShape.circle,
+            border: Border.all(color: completed ? AppColors.success : Colors.grey[300]!, width: 2),
+          ),
+          child: Center(child: Text(emoji, style: const TextStyle(fontSize: 28))),
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: TextStyle(color: completed ? AppColors.success : AppColors.lightText)),
+        const SizedBox(height: 4),
+        Icon(completed ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: completed ? AppColors.success : Colors.grey, size: 20),
+      ],
+    );
+  }
+
+  // 显示饮水记录弹窗
+  void _showWaterSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+              const Text('💧 饮水记录', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('目标: $_dailyWaterGoal 杯', style: TextStyle(color: AppColors.lightText)),
+              const SizedBox(height: 20),
+              // 水杯进度
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: List.generate(_dailyWaterGoal, (index) {
+                  final isFilled = index < _waterCount;
+                  return GestureDetector(
+                    onTap: () {
+                      setSheetState(() {
+                        _waterCount = index + 1 > _waterCount ? index : index + 1;
+                      });
+                      _saveWaterData();
+                    },
+                    child: Container(
+                      width: 48, height: 56,
+                      decoration: BoxDecoration(
+                        color: isFilled ? Colors.blue.withValues(alpha: 0.2) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: isFilled ? Colors.blue : Colors.grey[300]!, width: 2),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.water_drop, color: isFilled ? Colors.blue : Colors.grey[400], size: 24),
+                          Text('${index + 1}', style: TextStyle(fontSize: 10, color: isFilled ? Colors.blue : Colors.grey[400])),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _waterCount > 0 ? () {
+                      setSheetState(() => _waterCount--);
+                      _saveWaterData();
+                    } : null,
+                    icon: const Icon(Icons.remove),
+                    label: const Text('减少'),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: _waterCount < _dailyWaterGoal ? () {
+                      setSheetState(() => _waterCount++);
+                      _saveWaterData();
+                    } : null,
+                    icon: const Icon(Icons.add),
+                    label: const Text('添加'),
+                  ),
+                ],
+              ),
+              if (_waterCount >= _dailyWaterGoal) ...[
+                const SizedBox(height: 16),
+                const Text('🎉 今日饮水目标达成！', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
+              ],
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 显示周统计弹窗
+  void _showWeekStatsSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            const Text('📈 本周统计', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildWeekStatItem('打卡天数', '${_getWeekCheckInDays()}/7', AppColors.primary),
+                _buildWeekStatItem('完成率', '${_getWeekCompletionRate()}%', AppColors.secondary),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // 本周打卡日历
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(7, (index) {
+                final day = DateTime.now().subtract(Duration(days: 6 - index));
+                final checked = _checkInEvents.containsKey(DateTime(day.year, day.month, day.day));
+                return Column(
+                  children: [
+                    Text(_getWeekdayName(day.weekday), style: const TextStyle(fontSize: 12, color: AppColors.lightText)),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        color: checked ? AppColors.success : Colors.grey[200],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(child: Text('${day.day}', style: TextStyle(fontSize: 12, color: checked ? Colors.white : Colors.grey[600]))),
+                    ),
+                  ],
+                );
+              }),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeekStatItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.lightText)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+      ],
+    );
+  }
+
+  int _getWeekCheckInDays() {
+    final now = DateTime.now();
+    int count = 0;
+    for (int i = 0; i < 7; i++) {
+      final day = now.subtract(Duration(days: i));
+      if (_checkInEvents.containsKey(DateTime(day.year, day.month, day.day))) count++;
+    }
+    return count;
   }
 }
 
