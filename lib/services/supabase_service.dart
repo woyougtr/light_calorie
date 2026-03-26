@@ -11,12 +11,14 @@ class SupabaseService {
 
   static SupabaseClient get client {
     if (_accessToken != null) {
+      print('使用认证客户端，token: ${_accessToken!.substring(0, 20)}...');
       return SupabaseClient(
         url,
         key,
         headers: {'Authorization': 'Bearer $_accessToken'},
       );
     }
+    print('使用匿名客户端');
     return SupabaseClient(url, key);
   }
 
@@ -36,9 +38,11 @@ class SupabaseService {
   // 邮箱登录（直接调 HTTP API，绕过 PKCE 问题）
   static Future<(AppUser?, String?)> signIn(String email, String password) async {
     final (user, token, error) = await SupabaseAuthApi.signIn(email, password);
+    print('登录结果: user=${user != null}, token=${token != null}, error=$error');
     if (user != null && token != null) {
       _currentUser = user;
       _accessToken = token;
+      print('已保存 accessToken');
     }
     return (user, error);
   }
@@ -79,16 +83,19 @@ class SupabaseService {
   // 添加食物记录
   static Future<(bool, String?)> addFoodRecord(FoodRecord record) async {
     try {
+      print('当前 accessToken 状态: ${_accessToken != null ? "已设置" : "未设置"}');
       await client.from('food_records').insert(record.toJson());
       return (true, null);
     } on PostgrestException catch (e) {
+      print('PostgrestException: code=${e.code}, message=${e.message}');
       // RLS 权限错误
       if (e.code == '42501') {
-        return (false, '权限不足：请检查 Supabase RLS 策略配置');
+        return (false, '权限不足：${_accessToken == null ? "未登录" : "RLS策略问题"}');
       }
       // 其他 Postgrest 错误
       return (false, '数据库错误: ${e.message}');
     } catch (e) {
+      print('其他错误: $e');
       return (false, '未知错误: $e');
     }
   }
