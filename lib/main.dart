@@ -1376,6 +1376,41 @@ class _CheckInPageState extends State<CheckInPage> {
     return _checkInEvents[DateTime(day.year, day.month, day.day)] ?? [];
   }
 
+  // 检查选中日期是否有运动记录
+  bool _hasExerciseForDay(DateTime day) {
+    return _localExerciseRecords.any((e) {
+      return e.date.year == day.year &&
+             e.date.month == day.month &&
+             e.date.day == day.day;
+    });
+  }
+
+  // 获取选中日期的运动记录列表
+  List<ExerciseRecord> _getExercisesForDay(DateTime day) {
+    return _localExerciseRecords.where((e) {
+      return e.date.year == day.year &&
+             e.date.month == day.month &&
+             e.date.day == day.day;
+    }).toList();
+  }
+
+  // 构建选中日期的运动记录列表Widget
+  Widget _buildSelectedDayExerciseList() {
+    final exercises = _getExercisesForDay(_selectedDay!);
+    if (exercises.isEmpty) return const SizedBox.shrink();
+    
+    return Column(
+      children: exercises.map((exercise) => ListTile(
+        leading: Text(exercise.type.icon, style: const TextStyle(fontSize: 24)),
+        title: Text(exercise.type.label),
+        subtitle: Text('${exercise.duration} 分钟'),
+        trailing: Text('${exercise.calorie.toStringAsFixed(0)} kcal', 
+          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
+        dense: true,
+      )).toList(),
+    );
+  }
+
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       _selectedDay = selectedDay;
@@ -1685,14 +1720,18 @@ class _CheckInPageState extends State<CheckInPage> {
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
-                  if (_getEventsForDay(_selectedDay!).isEmpty)
-                    const Text('当日无打卡记录', style: TextStyle(color: Colors.grey))
-                  else
+                  // 显示运动记录
+                  _buildSelectedDayExerciseList(),
+                  // 显示其他打卡事件
+                  if (_getEventsForDay(_selectedDay!).isNotEmpty)
                     ..._getEventsForDay(_selectedDay!).map((event) => ListTile(
                       leading: const Icon(Icons.check_circle, color: AppColors.success),
                       title: Text(event),
                       dense: true,
                     )),
+                  // 如果都没有记录
+                  if (!_hasExerciseForDay(_selectedDay!) && _getEventsForDay(_selectedDay!).isEmpty)
+                    const Text('当日无打卡记录', style: TextStyle(color: Colors.grey)),
                 ],
               ),
             ),
