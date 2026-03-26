@@ -550,16 +550,23 @@ class _RecordPageState extends State<RecordPage> {
   String _searchKeyword = '';
   MealType _selectedMealType = MealType.breakfast;
 
+  DateTime _selectedDate = DateTime.now();
+  DateTime _currentDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
-    _recentFoods = [];
-    _loadTodayRecords();
+    _recentFoods = <Food>[];
+    _loadRecordsForDate(_currentDate);
+  }
+
+  Future<void> _loadRecordsForDate(DateTime date) async {
+    final records = await SupabaseService.getFoodRecords(widget.user.id, date);
+    if (mounted) setState(() { _todayRecords = records; _loading = false; });
   }
 
   Future<void> _loadTodayRecords() async {
-    final records = await SupabaseService.getFoodRecords(widget.user.id, DateTime.now());
-    if (mounted) setState(() { _todayRecords = records; _loading = false; });
+    await _loadRecordsForDate(_currentDate);
   }
 
   /// 按餐次分组记录
@@ -588,8 +595,35 @@ class _RecordPageState extends State<RecordPage> {
     final recordsByMeal = _recordsByMeal;
     final totalCalorie = _todayRecords.fold(0.0, (sum, r) => sum + r.calorie);
 
+    final isToday = _currentDate.year == DateTime.now().year &&
+                    _currentDate.month == DateTime.now().month &&
+                    _currentDate.day == DateTime.now().day;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('饮食记录')),
+      appBar: AppBar(
+        title: const Text('饮食记录'),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+                                                              final pickedDate = await showDatePicker(
+                                                              context: context,
+                                                              initialDate: _currentDate,
+                                                              firstDate: DateTime(2024),
+                                                              lastDate: DateTime.now(),
+                                                            );
+                                                            if (pickedDate != null) {
+                                                              setState(() => _currentDate = pickedDate);
+                                                              _loadRecordsForDate(pickedDate);
+                                                            }
+                                                          },
+                                                          icon: const Icon(Icons.calendar_today, size: 18),
+                                                          label: Text(
+                                                            isToday ? '今天' : '${_currentDate.month}/${_currentDate.day}',              style: const TextStyle(fontSize: 14),
+            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -1235,6 +1269,9 @@ class _CheckInPageState extends State<CheckInPage> {
   final List<ExerciseRecord> _todayExercises = <ExerciseRecord>[];
   double _todayExerciseCalorie = 0.0;
   
+  // 本地运动记录缓存（用于测试，后续可迁移到数据库）
+  static final List<ExerciseRecord> _localExerciseRecords = [];
+  
   // 安全获取运动消耗字符串
   String get _exerciseCalorieText {
     try {
@@ -1310,13 +1347,27 @@ class _CheckInPageState extends State<CheckInPage> {
   }
 
   Future<void> _loadExerciseData() async {
-    final exercises = await SupabaseService.getExerciseRecords(widget.user.id, date: DateTime.now());
-    final calorie = await SupabaseService.getTodayExerciseCalorie(widget.user.id);
+    _loadLocalExerciseData();
+  }
+  
+  void _loadLocalExerciseData() {
+    final today = DateTime.now();
+    final todayRecords = _localExerciseRecords.where((e) {
+      return e.date.year == today.year && 
+             e.date.month == today.month && 
+             e.date.day == today.day;
+    }).toList();
+    
+    double total = 0.0;
+    for (final r in todayRecords) {
+      total += r.calorie;
+    }
+    
     if (mounted) {
       setState(() {
         _todayExercises.clear();
-        _todayExercises.addAll(exercises ?? []);
-        _todayExerciseCalorie = calorie ?? 0.0;
+        _todayExercises.addAll(todayRecords);
+        _todayExerciseCalorie = total;
       });
     }
   }
@@ -1435,23 +1486,33 @@ class _CheckInPageState extends State<CheckInPage> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final record = ExerciseRecord(
-                      id: '',
-                      userId: widget.user.id,
-                      type: selectedType,
-                      duration: duration,
-                      calorie: selectedType.calculateCalorie(duration),
-                      date: DateTime.now(),
-                      createdAt: DateTime.now(),
-                    );
-                    
-                    final success = await SupabaseService.addExerciseRecord(record);
-                    if (success && mounted) {
-                      Navigator.pop(context);
-                      _loadExerciseData();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('已记录 ${selectedType.label} $duration 分钟')),
+                    try {
+                      final record = ExerciseRecord(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        userId: widget.user.id,
+                        type: selectedType,
+                        duration: duration,
+                        calorie: selectedType.calculateCalorie(duration),
+                        date: DateTime.now(),
+                        createdAt: DateTime.now(),
                       );
+                      
+                      // 先使用本地存储，方便测试
+                      _localExerciseRecords.add(record);
+                      
+                      if (mounted) {
+                        Navigator.pop(context);
+                        _loadLocalExerciseData();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('已记录 ${selectedType.label} $duration 分钟')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('保存出错: $e')),
+                        );
+                      }
                     }
                   },
                   icon: const Icon(Icons.check),
