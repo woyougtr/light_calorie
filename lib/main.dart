@@ -1753,15 +1753,7 @@ class _CheckInPageState extends State<CheckInPage> {
         ),
         const SizedBox(height: 16),
         
-        // 拍照打卡按钮
-        ElevatedButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.camera_alt),
-          label: const Text('拍照打卡'),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-          ),
-        ),
+
       ]),
     );
   }
