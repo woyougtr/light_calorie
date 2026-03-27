@@ -47,16 +47,7 @@ class UserHeaderCard extends StatelessWidget {
                 ),
               ),
               child: Center(
-                child: Text(
-                  (user.nickname?.isNotEmpty == true)
-                      ? user.nickname!.characters.first
-                      : '👤',
-                  style: const TextStyle(
-                    fontSize: 36,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: _buildAvatarText(),
               ),
             ),
             const SizedBox(height: 16),
@@ -112,5 +103,28 @@ class UserHeaderCard extends StatelessWidget {
     if (days < 30) return 3;
     if (days < 60) return 4;
     return 5;
+  }
+
+  Widget _buildAvatarText() {
+    // 安全地获取首字符
+    String avatarText = '👤';
+    final nickname = user.nickname;
+    if (nickname != null && nickname.isNotEmpty) {
+      // 使用 try-catch 避免任何异常
+      try {
+        avatarText = nickname[0].toUpperCase();
+      } catch (e) {
+        avatarText = '👤';
+      }
+    }
+    
+    return Text(
+      avatarText,
+      style: const TextStyle(
+        fontSize: 36,
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 }
