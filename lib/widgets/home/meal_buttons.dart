@@ -70,17 +70,30 @@ class MealButtons extends StatelessWidget {
         onTap: () => onMealTap(type),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          height: 96, // 固定高度
+          height: 96,
           decoration: BoxDecoration(
             color: isCompleted ? accentColor : bgColor,
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            boxShadow: isCompleted ? AppTheme.cardShadow : null,
+            boxShadow: [
+              if (isCompleted) ...[
+                BoxShadow(
+                  color: accentColor.withValues(alpha: 0.3),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+                BoxShadow(
+                  color: accentColor.withValues(alpha: 0.15),
+                  blurRadius: 24,
+                  spreadRadius: 4,
+                ),
+              ],
+            ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                alignment: Alignment.center,
+          child: Transform.translate(
+            offset: isCompleted ? const Offset(0, -4) : Offset.zero,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     emoji,
@@ -89,35 +102,18 @@ class MealButtons extends StatelessWidget {
                       color: isCompleted ? Colors.white : accentColor,
                     ),
                   ),
-                  if (isCompleted)
-                    Positioned(
-                      right: -4,
-                      top: -4,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.check_circle,
-                          size: 16,
-                          color: accentColor,
-                        ),
-                      ),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isCompleted ? Colors.white : AppTheme.textPrimary,
                     ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isCompleted ? Colors.white : AppTheme.textPrimary,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
