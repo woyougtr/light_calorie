@@ -16,6 +16,10 @@ class UserHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 安全检查 - 确保值不为 null
+    final safeConsecutiveDays = consecutiveDays ?? 0;
+    final safeNickname = user.nickname ?? '轻卡用户';
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -53,7 +57,7 @@ class UserHeaderCard extends StatelessWidget {
             const SizedBox(height: 16),
             // 用户名
             Text(
-              user.nickname ?? '轻卡用户',
+              safeNickname,
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -72,7 +76,7 @@ class UserHeaderCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Lv.${_getLevel()}',
+                    'Lv.${_getLevel(safeConsecutiveDays)}',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -82,7 +86,7 @@ class UserHeaderCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '已坚持 $consecutiveDays 天',
+                  '已坚持 $safeConsecutiveDays 天',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white.withValues(alpha: 0.9),
@@ -96,8 +100,7 @@ class UserHeaderCard extends StatelessWidget {
     );
   }
 
-  int _getLevel() {
-    final days = consecutiveDays;
+  int _getLevel(int days) {
     if (days < 7) return 1;
     if (days < 14) return 2;
     if (days < 30) return 3;
