@@ -33,10 +33,10 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _loadAllData();
+    loadAllData();
   }
 
-  Future<void> _loadAllData() async {
+  Future<void> loadAllData() async {
     await Future.wait([
       _loadWeightRecords(),
       _loadCheckInData(),
@@ -56,54 +56,75 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadCheckInData() async {
     final now = DateTime.now();
     final events = <DateTime, List<String>>{};
+    final waterRecords = <DateTime, int>{};
     int totalExerciseMinutes = 0;
 
-    // 获取最近30天的记录
+    // 并行获取最近30天的所有数据
+    final futures = <Future<void>>[];
+
     for (int i = 0; i < 30; i++) {
       final day = now.subtract(Duration(days: i));
       final dateKey = DateTime(day.year, day.month, day.day);
 
-      final foodRecords = await SupabaseService.getFoodRecords(widget.user.id, day);
-      if (foodRecords.isNotEmpty) {
-        events[dateKey] = events[dateKey] ?? [];
-        events[dateKey]!.add('饮食');
-      }
+      futures.add(() async {
+        final results = await Future.wait([
+          SupabaseService.getFoodRecords(widget.user.id, day),
+          SupabaseService.getWaterRecord(widget.user.id, day),
+          SupabaseService.getExerciseRecords(widget.user.id, date: day),
+        ]);
 
-      final waterCount = await SupabaseService.getWaterRecord(widget.user.id, day);
-      if (waterCount >= 8) {
-        events[dateKey] = events[dateKey] ?? [];
-        events[dateKey]!.add('饮水');
-      }
+        final foodRecords = results[0] as List<FoodRecord>;
+        final waterCount = results[1] as int;
+        final exercises = results[2] as List<ExerciseRecord>;
 
-      final exercises = await SupabaseService.getExerciseRecords(widget.user.id, date: day);
-      if (exercises.isNotEmpty) {
-        events[dateKey] = events[dateKey] ?? [];
-        events[dateKey]!.add('运动');
-        for (final e in exercises) {
-          totalExerciseMinutes += e.duration;
+        waterRecords[dateKey] = waterCount;
+
+        if (foodRecords.isNotEmpty || waterCount >= 8 || exercises.isNotEmpty) {
+          events[dateKey] = [];
+          if (foodRecords.isNotEmpty) events[dateKey]!.add('饮食');
+          if (waterCount >= 8) events[dateKey]!.add('饮水');
+          if (exercises.isNotEmpty) {
+            events[dateKey]!.add('运动');
+            for (final e in exercises) {
+              totalExerciseMinutes += e.duration;
+            }
+          }
         }
-      }
+      }());
     }
+
+    await Future.wait(futures);
 
     // 计算连续打卡天数
     int consecutive = 0;
     DateTime checkDate = DateTime(now.year, now.month, now.day);
+
+    // 先找到最近有记录的那天
+    while (checkDate.isAfter(DateTime(now.year - 1, now.month, now.day)) &&
+           (!events.containsKey(checkDate) || events[checkDate]!.isEmpty)) {
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+
+    // 然后从那天往前数连续天数
     while (events.containsKey(checkDate) && events[checkDate]!.isNotEmpty) {
       consecutive++;
       checkDate = checkDate.subtract(const Duration(days: 1));
     }
 
-    // 计算饮水连续天数
+    // 计算饮水连续天数（使用已缓存的数据）
     int waterStreak = 0;
     checkDate = DateTime(now.year, now.month, now.day);
-    while (true) {
-      final count = await SupabaseService.getWaterRecord(widget.user.id, checkDate);
-      if (count >= 8) {
-        waterStreak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
-      } else {
-        break;
-      }
+
+    // 先找到最近饮水达标的那天
+    while (checkDate.isAfter(DateTime(now.year - 1, now.month, now.day)) &&
+           (waterRecords[checkDate] == null || waterRecords[checkDate]! < 8)) {
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+
+    // 然后往前数连续达标天数
+    while (waterRecords[checkDate] != null && waterRecords[checkDate]! >= 8) {
+      waterStreak++;
+      checkDate = checkDate.subtract(const Duration(days: 1));
     }
 
     if (mounted) {
@@ -174,7 +195,7 @@ class _ProfilePageState extends State<ProfilePage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadAllData,
+              onRefresh: loadAllData,
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [

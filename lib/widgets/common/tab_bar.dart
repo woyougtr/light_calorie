@@ -85,8 +85,8 @@ class _TabItem extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
           padding: EdgeInsets.symmetric(
             horizontal: isSelected ? 12 : 8,
             vertical: 8,

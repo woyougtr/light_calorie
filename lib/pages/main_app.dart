@@ -16,17 +16,30 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   int _currentIndex = 0;
   final GlobalKey _homePageKey = GlobalKey();
+  final GlobalKey _checkInPageKey = GlobalKey();
+  final GlobalKey _profilePageKey = GlobalKey();
 
   void _onNavChanged(int index) {
-    // 从记录页(1)或其他页面切换回首页(0)时刷新数据
-    if (index == 0 && _currentIndex != 0) {
-      // 通过 key 获取状态并调用加载方法
+    // 切换 tab 时刷新对应页面的数据
+    if (index == _currentIndex) return;
+
+    if (index == 0) {
+      // 切换到首页
       try {
         (_homePageKey.currentState as dynamic).loadTodayData();
-      } catch (_) {
-        // 忽略调用失败
-      }
+      } catch (_) {}
+    } else if (index == 2) {
+      // 切换到打卡页
+      try {
+        (_checkInPageKey.currentState as dynamic).loadAllData();
+      } catch (_) {}
+    } else if (index == 3) {
+      // 切换到我的页
+      try {
+        (_profilePageKey.currentState as dynamic).loadAllData();
+      } catch (_) {}
     }
+
     setState(() => _currentIndex = index);
   }
 
@@ -36,8 +49,8 @@ class _MainAppState extends State<MainApp> {
       body: IndexedStack(index: _currentIndex, children: [
         HomePage(key: _homePageKey, user: widget.user),
         RecordPage(user: widget.user),
-        CheckInPage(user: widget.user),
-        ProfilePage(user: widget.user),
+        CheckInPage(key: _checkInPageKey, user: widget.user),
+        ProfilePage(key: _profilePageKey, user: widget.user),
       ]),
       bottomNavigationBar: CapsuleTabBar(
         currentIndex: _currentIndex,

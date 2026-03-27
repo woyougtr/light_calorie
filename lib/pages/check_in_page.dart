@@ -40,10 +40,10 @@ class _CheckInPageState extends State<CheckInPage> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadAllData();
+    loadAllData();
   }
 
-  Future<void> _loadAllData() async {
+  Future<void> loadAllData() async {
     await Future.wait([
       _loadCheckInData(),
       _loadTodayData(),
@@ -54,36 +54,48 @@ class _CheckInPageState extends State<CheckInPage> {
     final now = DateTime.now();
     final events = <DateTime, List<String>>{};
 
-    // 获取最近30天的记录
+    // 并行获取最近30天的所有数据
+    final futures = <Future<void>>[];
+
     for (int i = 0; i < 30; i++) {
       final day = now.subtract(Duration(days: i));
       final dateKey = DateTime(day.year, day.month, day.day);
 
-      // 检查饮食
-      final foodRecords = await SupabaseService.getFoodRecords(widget.user.id, day);
-      if (foodRecords.isNotEmpty) {
-        events[dateKey] = events[dateKey] ?? [];
-        events[dateKey]!.add('饮食');
-      }
+      futures.add(() async {
+        // 并行获取饮食、饮水、运动数据
+        final results = await Future.wait([
+          SupabaseService.getFoodRecords(widget.user.id, day),
+          Future.value(SupabaseService.getWaterRecord(widget.user.id, day)),
+          SupabaseService.getExerciseRecords(widget.user.id, date: day),
+        ]);
 
-      // 检查饮水
-      final waterCount = await SupabaseService.getWaterRecord(widget.user.id, day);
-      if (waterCount >= _waterGoal) {
-        events[dateKey] = events[dateKey] ?? [];
-        events[dateKey]!.add('饮水');
-      }
+        final foodRecords = results[0] as List<FoodRecord>;
+        final waterCount = results[1] as int;
+        final exercises = results[2] as List<ExerciseRecord>;
 
-      // 检查运动
-      final exercises = await SupabaseService.getExerciseRecords(widget.user.id, date: day);
-      if (exercises.isNotEmpty) {
-        events[dateKey] = events[dateKey] ?? [];
-        events[dateKey]!.add('运动');
-      }
+        if (foodRecords.isNotEmpty || waterCount >= _waterGoal || exercises.isNotEmpty) {
+          events[dateKey] = [];
+          if (foodRecords.isNotEmpty) events[dateKey]!.add('饮食');
+          if (waterCount >= _waterGoal) events[dateKey]!.add('饮水');
+          if (exercises.isNotEmpty) events[dateKey]!.add('运动');
+        }
+      }());
     }
 
+    await Future.wait(futures);
+
     // 计算连续打卡天数
+    // 从最近有记录的那天开始往前数，而不是从今天开始
     int consecutive = 0;
     DateTime checkDate = DateTime(now.year, now.month, now.day);
+
+    // 先找到最近有记录的那天
+    while (checkDate.isAfter(DateTime(now.year - 1, now.month, now.day)) &&
+           (!events.containsKey(checkDate) || events[checkDate]!.isEmpty)) {
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+
+    // 然后从那天往前数连续天数
     while (events.containsKey(checkDate) && events[checkDate]!.isNotEmpty) {
       consecutive++;
       checkDate = checkDate.subtract(const Duration(days: 1));
@@ -151,7 +163,7 @@ class _CheckInPageState extends State<CheckInPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadAllData,
+              onRefresh: loadAllData,
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 children: [
