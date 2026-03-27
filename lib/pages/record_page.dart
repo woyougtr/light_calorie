@@ -6,7 +6,14 @@ import '../services/supabase_service.dart';
 
 class RecordPage extends StatefulWidget {
   final AppUser user;
-  const RecordPage({super.key, required this.user});
+  final MealType? initialMealType;
+
+  const RecordPage({
+    super.key,
+    required this.user,
+    this.initialMealType,
+  });
+
   @override
   State<RecordPage> createState() => _RecordPageState();
 }
@@ -15,7 +22,7 @@ class _RecordPageState extends State<RecordPage> {
   List<FoodRecord> _todayRecords = [];
   bool _loading = true;
   String _searchKeyword = '';
-  MealType _selectedMealType = MealType.breakfast;
+  late MealType _selectedMealType;
 
   DateTime _selectedDate = DateTime.now();
   DateTime _currentDate = DateTime.now();
@@ -23,6 +30,7 @@ class _RecordPageState extends State<RecordPage> {
   @override
   void initState() {
     super.initState();
+    _selectedMealType = widget.initialMealType ?? MealType.breakfast;
     _recentFoods = <Food>[];
     _loadRecordsForDate(_currentDate);
   }
