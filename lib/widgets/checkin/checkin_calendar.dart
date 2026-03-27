@@ -103,32 +103,37 @@ class CheckInCalendar extends StatelessWidget {
   Widget _buildDayCell(DateTime day, bool isToday) {
     final dateKey = DateTime(day.year, day.month, day.day);
     final dayEvents = events[dateKey] ?? [];
-    
+
     // 判断打卡状态
     final hasDiet = dayEvents.contains('饮食');
     final hasWater = dayEvents.contains('饮水');
     final hasExercise = dayEvents.contains('运动');
     final hasCheckIn = dayEvents.isNotEmpty;
 
-    // 选择图标
+    // 选择图标 - 优先级：完成度 > 今天标记 > 未完成
     String icon = '⭕';
     Color iconColor = AppTheme.divider;
-    
-    if (isToday) {
-      icon = '⭐';
-      iconColor = AppColors.primary;
-    } else if (hasDiet && hasWater && hasExercise) {
+
+    if (hasDiet && hasWater && hasExercise) {
+      // 全部完成：火焰
       icon = '🔥';
       iconColor = const Color(0xFFFF5722);
     } else if (hasDiet) {
+      // 有饮食：餐具
       icon = '🍱';
       iconColor = const Color(0xFFFFA000);
     } else if (hasWater) {
+      // 有饮水：水滴
       icon = '💧';
       iconColor = const Color(0xFF2196F3);
     } else if (hasExercise) {
+      // 有运动：跑步
       icon = '🏃';
       iconColor = const Color(0xFF4CAF50);
+    } else if (isToday) {
+      // 今天但无记录：星星
+      icon = '⭐';
+      iconColor = AppColors.primary;
     }
 
     return Container(

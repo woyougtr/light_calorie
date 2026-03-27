@@ -128,8 +128,10 @@ class _CheckInPageState extends State<CheckInPage> {
 
   int get _completedCount {
     int count = 0;
-    if (_dietStatus['breakfast']! && _dietStatus['lunch']! && _dietStatus['dinner']!) count++;
-    if (_waterCount >= _waterGoal) count++;
+    // 饮食：任意一餐完成就算打卡成功
+    if (_dietStatus['breakfast']! || _dietStatus['lunch']! || _dietStatus['dinner']!) count++;
+    // 饮水：任意饮水就算打卡成功（不需要达到目标）
+    if (_waterCount > 0) count++;
     if (_todayExercises.isNotEmpty) count++;
     if (_currentWeight != null) count++;
     return count;

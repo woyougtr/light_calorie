@@ -159,10 +159,12 @@ class TodayChecklist extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final completedMeals = (dietStatus['breakfast'] ? 1 : 0) +
-        (dietStatus['lunch'] ? 1 : 0) +
-        (dietStatus['dinner'] ? 1 : 0);
+    final completedMeals = (dietStatus['breakfast'] == true ? 1 : 0) +
+        (dietStatus['lunch'] == true ? 1 : 0) +
+        (dietStatus['dinner'] == true ? 1 : 0);
     final totalMeals = 3;
+    // 任意一餐完成就算饮食打卡成功
+    final isDietCompleted = completedMeals > 0;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -199,13 +201,14 @@ class TodayChecklist extends StatelessWidget {
           _buildTaskItem(
             icon: '🍱',
             title: '饮食打卡',
-            subtitle: completedMeals == totalMeals
-                ? '全部完成'
-                : '早餐${dietStatus['breakfast'] ? ' ✓' : ' ⭕'}  '
-                    '午餐${dietStatus['lunch'] ? ' ✓' : ' ⭕'}  '
-                    '晚餐${dietStatus['dinner'] ? ' ✓' : ' ⭕'}',
-            isCompleted: completedMeals == totalMeals,
-            progress: '$completedMeals/$totalMeals',
+            subtitle: completedMeals == 0
+                ? '今日未记录'
+                : '已记录 ${completedMeals} 餐：'
+                    '${dietStatus['breakfast'] == true ? '早餐 ' : ''}'
+                    '${dietStatus['lunch'] == true ? '午餐 ' : ''}'
+                    '${dietStatus['dinner'] == true ? '晚餐' : ''}',
+            isCompleted: isDietCompleted,
+            progress: isDietCompleted ? '✓' : '⭕',
             onTap: onDietTap,
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -213,11 +216,13 @@ class TodayChecklist extends StatelessWidget {
           _buildTaskItem(
             icon: '💧',
             title: '饮水打卡',
-            subtitle: waterCount >= waterGoal
-                ? '目标达成'
-                : '再喝 ${waterGoal - waterCount} 杯',
-            isCompleted: waterCount >= waterGoal,
-            progress: '$waterCount/$waterGoal',
+            subtitle: waterCount == 0
+                ? '今日未记录'
+                : waterCount >= waterGoal
+                    ? '目标达成 $waterCount/$waterGoal 杯'
+                    : '已喝 $waterCount/$waterGoal 杯，再喝 ${waterGoal - waterCount} 杯达标',
+            isCompleted: waterCount > 0,
+            progress: waterCount > 0 ? '✓' : '⭕',
             onTap: onWaterTap,
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -356,12 +361,14 @@ class TodayChecklist extends StatelessWidget {
 
   int _getCompletedCount() {
     int count = 0;
-    if ((dietStatus['breakfast'] ?? false) &&
-        (dietStatus['lunch'] ?? false) &&
+    // 饮食：任意一餐完成就算成功
+    if ((dietStatus['breakfast'] ?? false) ||
+        (dietStatus['lunch'] ?? false) ||
         (dietStatus['dinner'] ?? false)) {
       count++;
     }
-    if (waterCount >= waterGoal) count++;
+    // 饮水：任意饮水就算成功
+    if (waterCount > 0) count++;
     if (exercises.isNotEmpty) count++;
     if (currentWeight != null) count++;
     return count;
