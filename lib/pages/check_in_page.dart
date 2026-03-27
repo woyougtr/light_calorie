@@ -182,9 +182,9 @@ class _CheckInPageState extends State<CheckInPage> {
                   const SizedBox(height: 24),
                   // 今日进度
                   TodayProgress(
-                    progress: _completedCount / 4,
+                    progress: _completedCount / 3,
                     completedCount: _completedCount,
-                    totalCount: 4,
+                    totalCount: 3,
                   ),
                   const SizedBox(height: 24),
                   // 今日任务清单

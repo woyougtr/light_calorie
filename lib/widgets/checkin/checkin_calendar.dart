@@ -110,9 +110,9 @@ class CheckInCalendar extends StatelessWidget {
     final hasExercise = dayEvents.contains('运动');
     final hasCheckIn = dayEvents.isNotEmpty;
 
-    // 选择图标 - 优先级：完成度 > 今天标记 > 未完成
-    String icon = '⭕';
-    Color iconColor = AppTheme.divider;
+    // 选择图标 - 只有完成的日子才显示图标
+    String? icon;
+    Color? iconColor;
 
     if (hasDiet && hasWater && hasExercise) {
       // 全部完成：火焰
@@ -135,6 +135,7 @@ class CheckInCalendar extends StatelessWidget {
       icon = '⭐';
       iconColor = AppColors.primary;
     }
+    // 其他日子无记录：不显示图标
 
     return Container(
       alignment: Alignment.center,
@@ -149,11 +150,13 @@ class CheckInCalendar extends StatelessWidget {
               color: isToday ? AppColors.primary : AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            icon,
-            style: TextStyle(fontSize: 14, color: iconColor),
-          ),
+          if (icon != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              icon,
+              style: TextStyle(fontSize: 14, color: iconColor),
+            ),
+          ],
         ],
       ),
     );
@@ -178,7 +181,6 @@ class CalendarLegend extends StatelessWidget {
           _buildLegendItem('💧', '饮水', const Color(0xFF2196F3)),
           _buildLegendItem('🏃', '运动', const Color(0xFF4CAF50)),
           _buildLegendItem('⭐', '今日', AppColors.primary),
-          _buildLegendItem('⭕', '未打卡', AppTheme.divider),
         ],
       ),
     );

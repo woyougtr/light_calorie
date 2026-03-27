@@ -249,16 +249,6 @@ class TodayChecklist extends StatelessWidget {
             progress: currentWeight != null ? '✓' : '⭕',
             onTap: onWeightTap,
           ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          // 拍照打卡（占位）
-          _buildTaskItem(
-            icon: '📷',
-            title: '拍照打卡',
-            subtitle: '记录今日状态',
-            isCompleted: false,
-            progress: '⭕',
-            onTap: () {},
-          ),
           // 底部统计
           Container(
             width: double.infinity,
@@ -271,7 +261,7 @@ class TodayChecklist extends StatelessWidget {
               ),
             ),
             child: Text(
-              '已完成 ${_getCompletedCount()}/4 项',
+              '已完成 ${_getCompletedCount()}/3 项',
               style: TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
