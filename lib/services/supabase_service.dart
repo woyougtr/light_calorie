@@ -1,6 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
-import 'supabase_auth_api.dart';
 
 class SupabaseService {
   static const String url = 'https://pjtakguinniaeaymncob.supabase.co';
@@ -9,50 +8,72 @@ class SupabaseService {
   static String? _accessToken;
   static AppUser? _currentUser;
 
-  static SupabaseClient get client {
-    if (_accessToken != null) {
-      return SupabaseClient(
-        url,
-        key,
-        headers: {'Authorization': 'Bearer $_accessToken'},
-      );
-    }
-    return SupabaseClient(url, key);
-  }
+  static SupabaseClient get client => SupabaseClient(url, key);
 
   // 获取当前用户
   static AppUser? get currentUser => _currentUser;
 
-  // 邮箱注册（直接调 HTTP API，绕过 PKCE 问题）
+  // 邮箱注册（使用 SDK）
   static Future<(AppUser?, String?)> signUp(String email, String password) async {
-    final (user, token, error) = await SupabaseAuthApi.signUp(email, password);
-    if (user != null && token != null) {
-      _currentUser = user;
-      _accessToken = token;
+    try {
+      final res = await client.auth.signUp(email: email, password: password);
+      if (res.user != null) {
+        _currentUser = AppUser(
+          id: res.user!.id,
+          email: email,
+          createdAt: DateTime.now(),
+        );
+        return (_currentUser, null);
+      }
+      return (null, '注册失败');
+    } on AuthException catch (e) {
+      return (null, e.message);
+    } catch (e) {
+      return (null, '网络异常');
     }
-    return (user, error);
   }
 
-  // 邮箱登录（直接调 HTTP API，绕过 PKCE 问题）
+  // 邮箱登录（使用 SDK）
   static Future<(AppUser?, String?)> signIn(String email, String password) async {
-    final (user, token, error) = await SupabaseAuthApi.signIn(email, password);
-    if (user != null && token != null) {
-      _currentUser = user;
-      _accessToken = token;
+    try {
+      final res = await client.auth.signInWithPassword(email: email, password: password);
+      if (res.user != null) {
+        _currentUser = AppUser(
+          id: res.user!.id,
+          email: email,
+          createdAt: DateTime.now(),
+        );
+        return (_currentUser, null);
+      }
+      return (null, '登录失败');
+    } on AuthException catch (e) {
+      return (null, e.message);
+    } catch (e) {
+      return (null, '网络异常');
     }
-    return (user, error);
   }
 
   // 退出登录
   static Future<void> signOut() async {
+    await client.auth.signOut();
     _accessToken = null;
     _currentUser = null;
   }
 
   // 监听登录状态变化
-  static Stream<AppUser?> get authStateChanges async* {
-    // 由于使用自定义登录，这里返回当前用户的变化
-    yield _currentUser;
+  static Stream<AppUser?> get authStateChanges {
+    return client.auth.onAuthStateChange.map((event) {
+      if (event.session?.user != null) {
+        _currentUser = AppUser(
+          id: event.session!.user.id,
+          email: event.session!.user.email ?? '',
+          createdAt: DateTime.now(),
+        );
+      } else {
+        _currentUser = null;
+      }
+      return _currentUser;
+    });
   }
 
   // 保存用户配置
