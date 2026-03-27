@@ -8,50 +8,106 @@ class SupabaseService {
   static String? _accessToken;
   static AppUser? _currentUser;
 
-  static SupabaseClient get client => SupabaseClient(url, key);
+  // 使用 Supabase 全局实例，确保会话状态正确持久化
+  static SupabaseClient get client => Supabase.instance.client;
 
-  // 获取当前用户
-  static AppUser? get currentUser => _currentUser;
-
-  // 邮箱注册（使用 SDK）
-  static Future<(AppUser?, String?)> signUp(String email, String password) async {
-    try {
-      final res = await client.auth.signUp(email: email, password: password);
-      if (res.user != null) {
-        _currentUser = AppUser(
-          id: res.user!.id,
-          email: email,
-          createdAt: DateTime.now(),
-        );
-        return (_currentUser, null);
-      }
-      return (null, '注册失败');
-    } on AuthException catch (e) {
-      return (null, e.message);
-    } catch (e) {
-      return (null, '网络异常');
+  // 获取当前用户（如果内存中没有但从 session 中有，自动恢复）
+  static AppUser? get currentUser {
+    if (_currentUser != null) return _currentUser;
+    // 尝试从 Supabase session 恢复
+    final sessionUser = client.auth.currentUser;
+    if (sessionUser != null) {
+      _currentUser = AppUser(
+        id: sessionUser.id,
+        email: sessionUser.email ?? '',
+        createdAt: DateTime.now(),
+      );
+      return _currentUser;
     }
+    return null;
   }
 
-  // 邮箱登录（使用 SDK）
-  static Future<(AppUser?, String?)> signIn(String email, String password) async {
-    try {
-      final res = await client.auth.signInWithPassword(email: email, password: password);
-      if (res.user != null) {
-        _currentUser = AppUser(
-          id: res.user!.id,
-          email: email,
-          createdAt: DateTime.now(),
-        );
-        return (_currentUser, null);
+    // 邮箱注册（使用 SDK ）
+
+    static Future<(AppUser?, String?)> signUp(String email, String password) async {
+
+      try {
+
+        final res = await client.auth.signUp(email: email, password: password);
+
+        if (res.user != null) {
+
+          _accessToken = res.session?.accessToken;
+
+          _currentUser = AppUser(
+
+            id: res.user!.id,
+
+            email: email,
+
+            createdAt: DateTime.now(),
+
+          );
+
+          return (_currentUser, null);
+
+        }
+
+        return (null, '注册失败');
+
+      } on AuthException catch (e) {
+
+        return (null, e.message);
+
+      } catch (e) {
+
+        return (null, '网络异常');
+
       }
-      return (null, '登录失败');
-    } on AuthException catch (e) {
-      return (null, e.message);
-    } catch (e) {
-      return (null, '网络异常');
+
     }
-  }
+
+  
+
+    // 邮箱登录（使用 SDK ）
+
+    static Future<(AppUser?, String?)> signIn(String email, String password) async {
+
+      try {
+
+        final res = await client.auth.signInWithPassword(email: email, password: password);
+
+        if (res.user != null) {
+
+          _accessToken = res.session?.accessToken;
+
+          _currentUser = AppUser(
+
+            id: res.user!.id,
+
+            email: email,
+
+            createdAt: DateTime.now(),
+
+          );
+
+          return (_currentUser, null);
+
+        }
+
+        return (null, '登录失败');
+
+      } on AuthException catch (e) {
+
+        return (null, e.message);
+
+      } catch (e) {
+
+        return (null, '网络异常');
+
+      }
+
+    }
 
   // 退出登录
   static Future<void> signOut() async {
@@ -194,23 +250,31 @@ class SupabaseService {
   // 添加运动记录
   static Future<(bool, String?)> addExerciseRecord(ExerciseRecord record) async {
     try {
-      // 检查当前 session
+      // 检查是否已登录
       final session = client.auth.currentSession;
-      if (session == null) {
-        return (false, '未登录：无有效会话');
+      final user = client.auth.currentUser;
+      if (session == null || user == null) {
+        return (false, '未登录：请先登录');
       }
-      await client.from('exercise_records').insert(record.toJson());
+
+      // 检查用户ID是否匹配
+      if (record.userId != user.id) {
+        return (false, '用户ID不匹配：record.userId=${record.userId}, auth.userId=${user.id}');
+      }
+
+      final data = record.toJson();
+      await client.from('exercise_records').insert(data);
       return (true, null);
     } on PostgrestException catch (e) {
       // RLS 权限错误
       if (e.code == '42501') {
-        return (false, '权限不足：RLS策略问题，请检查数据库权限设置');
+        return (false, '权限不足：RLS策略阻止了插入，请检查策略配置');
       }
       // JWT 错误
       if (e.message.contains('JWT') || e.message.contains('token')) {
         return (false, '认证过期，请重新登录');
       }
-      return (false, '数据库错误: ${e.message}');
+      return (false, '数据库错误: ${e.message} (code: ${e.code})');
     } catch (e) {
       return (false, '未知错误: $e');
     }
@@ -253,11 +317,11 @@ class SupabaseService {
           .eq('user_id', userId)
           .eq('date', dateStr);
 
-      if (data == null || data.isEmpty) return 0.0;
+      if (data.isEmpty) return 0.0;
 
       double total = 0.0;
       for (final item in data as List) {
-        if (item != null && item['calorie'] != null) {
+        if (item['calorie'] != null) {
           total += (item['calorie'] as num).toDouble();
         }
       }

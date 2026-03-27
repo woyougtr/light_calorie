@@ -1343,6 +1343,9 @@ class _CheckInPageState extends State<CheckInPage> {
 
   Future<void> _saveWaterData() async {
     await SupabaseService.saveWaterRecord(widget.user.id, _waterCount, DateTime.now());
+    if (mounted) {
+      setState(() {}); // 刷新主页面 UI
+    }
   }
 
   Future<void> _loadExerciseData() async {
@@ -1518,7 +1521,7 @@ class _CheckInPageState extends State<CheckInPage> {
                   onPressed: () async {
                     try {
                       final record = ExerciseRecord(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        id: '', // 空字符串，让数据库自动生成 UUID
                         userId: widget.user.id,
                         type: selectedType,
                         duration: duration,
