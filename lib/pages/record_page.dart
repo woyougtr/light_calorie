@@ -4,6 +4,7 @@ import '../config/app_theme.dart';
 import '../data/foods.dart';
 import '../models/models.dart';
 import '../services/supabase_service.dart';
+import '../widgets/common/app_header.dart';
 import '../widgets/record/timeline_view.dart';
 
 class RecordPage extends StatefulWidget {
@@ -62,22 +63,13 @@ class _RecordPageState extends State<RecordPage> {
   @override
   Widget build(BuildContext context) {
     final isToday = _isToday(_currentDate);
+    final dateStr = isToday ? '今天' : '${_currentDate.month}月${_currentDate.day}日';
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('饮食记录'),
-        actions: [
-          TextButton.icon(
-            onPressed: () => _selectDate(),
-            icon: const Icon(Icons.calendar_today, size: 18),
-            label: Text(
-              isToday ? '今天' : '${_currentDate.month}/${_currentDate.day}',
-              style: const TextStyle(fontSize: 14),
-            ),
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-          ),
-        ],
+      appBar: RecordAppBar(
+        dateStr: dateStr,
+        onDateTap: () => _selectDate(),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

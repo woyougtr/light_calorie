@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import '../config/app_colors.dart';
 import '../config/app_theme.dart';
 import '../models/models.dart';
 import '../services/supabase_service.dart';
+import '../widgets/common/app_header.dart';
 import '../widgets/profile/achievement_badges.dart';
 import '../widgets/profile/settings_list.dart';
-import '../widgets/profile/user_header_card.dart';
 import '../widgets/profile/weight_trend_chart.dart';
 import '../widgets/profile/weekly_stats_grid.dart';
 import 'login_page.dart';
@@ -151,89 +150,78 @@ class _ProfilePageState extends State<ProfilePage> {
 
   double? get _currentWeight => _weightRecords.isNotEmpty ? _weightRecords.first.weight : null;
   double? get _initialWeight => widget.user.initialWeight;
-  double? get _weightChange => (_currentWeight != null && _initialWeight != null) 
-      ? _initialWeight! - _currentWeight! 
+  double? get _weightChange => (_currentWeight != null && _initialWeight != null)
+      ? _initialWeight! - _currentWeight!
       : null;
+
+  int get _level {
+    if (_consecutiveDays < 7) return 1;
+    if (_consecutiveDays < 14) return 2;
+    if (_consecutiveDays < 30) return 3;
+    if (_consecutiveDays < 60) return 4;
+    return 5;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
+      appBar: ProfileAppBar(
+        nickname: widget.user.nickname ?? '',
+        consecutiveDays: _consecutiveDays,
+        level: _level,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadAllData,
-              child: CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    floating: true,
-                    backgroundColor: AppTheme.background,
-                    elevation: 0,
-                    title: const Text('我的'),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.settings_outlined),
-                        onPressed: () {},
-                      ),
-                    ],
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  const SizedBox(height: 24),
+                  // 本周数据概览
+                  WeeklyStatsGrid(
+                    totalCalories: _weeklyCalories,
+                    exerciseCalories: _weeklyExerciseCalories,
+                    currentWeight: _currentWeight,
+                    weightChange: _weightChange,
+                    checkInDays: _weeklyCheckInDays,
                   ),
-                  SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 8),
-                        // 用户头像卡片
-                        UserHeaderCard(
-                          user: widget.user,
-                          consecutiveDays: _consecutiveDays,
-                        ),
-                        const SizedBox(height: 24),
-                        // 本周数据概览
-                        WeeklyStatsGrid(
-                          totalCalories: _weeklyCalories,
-                          exerciseCalories: _weeklyExerciseCalories,
-                          currentWeight: _currentWeight,
-                          weightChange: _weightChange,
-                          checkInDays: _weeklyCheckInDays,
-                        ),
-                        const SizedBox(height: 24),
-                        // 成就徽章
-                        AchievementBadges(
-                          consecutiveDays: _consecutiveDays,
-                          waterStreak: _waterStreak,
-                          totalExerciseMinutes: _totalExerciseMinutes,
-                          weightChange: _weightChange,
-                        ),
-                        const SizedBox(height: 24),
-                        // 体重趋势图
-                        WeightTrendChart(weightRecords: _weightRecords),
-                        const SizedBox(height: 24),
-                        // 快捷设置
-                        SettingsList(
-                          onProfileTap: () => _showProfileDialog(),
-                          onGoalsTap: () => _showGoalsDialog(),
-                          onRemindersTap: () {},
-                          onStatsTap: () {},
-                          onExportTap: () {},
-                          onHelpTap: () {},
-                        ),
-                        const SizedBox(height: 24),
-                        // 退出登录
-                        LogoutButton(
-                          onTap: () async {
-                            await SupabaseService.signOut();
-                            if (mounted) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (_) => const LoginPage()),
-                              );
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 32),
-                      ],
-                    ),
+                  const SizedBox(height: 24),
+                  // 成就徽章
+                  AchievementBadges(
+                    consecutiveDays: _consecutiveDays,
+                    waterStreak: _waterStreak,
+                    totalExerciseMinutes: _totalExerciseMinutes,
+                    weightChange: _weightChange,
                   ),
+                  const SizedBox(height: 24),
+                  // 体重趋势图
+                  WeightTrendChart(weightRecords: _weightRecords),
+                  const SizedBox(height: 24),
+                  // 快捷设置
+                  SettingsList(
+                    onProfileTap: () => _showProfileDialog(),
+                    onGoalsTap: () => _showGoalsDialog(),
+                    onRemindersTap: () {},
+                    onStatsTap: () {},
+                    onExportTap: () {},
+                    onHelpTap: () {},
+                  ),
+                  const SizedBox(height: 24),
+                  // 退出登录
+                  LogoutButton(
+                    onTap: () async {
+                      await SupabaseService.signOut();
+                      if (mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                        );
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),

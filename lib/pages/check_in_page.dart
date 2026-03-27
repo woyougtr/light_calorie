@@ -6,6 +6,7 @@ import '../services/supabase_service.dart';
 import '../widgets/checkin/checkin_calendar.dart';
 import '../widgets/checkin/consecutive_card.dart';
 import '../widgets/checkin/today_progress.dart';
+import '../widgets/common/app_header.dart';
 
 class CheckInPage extends StatefulWidget {
   final AppUser user;
@@ -141,9 +142,11 @@ class _CheckInPageState extends State<CheckInPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('打卡日历'),
-        elevation: 0,
+      appBar: CheckInAppBar(
+        consecutiveDays: _consecutiveDays,
+        progress: _completedCount / 3,
+        completed: _completedCount,
+        total: 3,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

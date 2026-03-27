@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 import '../config/app_theme.dart';
-import '../data/foods.dart';
 import '../models/models.dart';
 import '../services/supabase_service.dart';
+import '../widgets/common/app_header.dart';
 import '../widgets/home/calorie_card.dart';
 import '../widgets/home/health_dashboard.dart';
 import '../widgets/home/meal_buttons.dart';
 import '../widgets/home/smart_suggestions.dart';
 import '../widgets/home/today_records_list.dart';
-import 'check_in_page.dart';
 import 'record_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -102,114 +101,73 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
+      appBar: HomeAppBar(
+        dateStr: dateStr,
+        nickname: widget.user.nickname ?? '',
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: loadTodayData,
-              child: CustomScrollView(
-                slivers: [
-                  // 顶部 App Bar
-                  SliverAppBar(
-                    floating: true,
-                    backgroundColor: AppTheme.background,
-                    elevation: 0,
-                    title: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          dateStr,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                        const Text(
-                          '轻卡',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined),
-                        onPressed: () {},
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: AppColors.primary.withOpacity(0.2),
-                          child: Text(
-                            widget.user.nickname?.substring(0, 1) ?? '👤',
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
+              child: ListView(
+                children: [
                   // 内容区域
-                  SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
 
-                        // 热量概览卡片
-                        CalorieCard(
-                          consumed: _totalCalories,
-                          goal: widget.user.dailyCalorieGoal,
-                          onTap: () => _navigateToRecordPage(),
-                        ),
+                      // 热量概览卡片
+                      CalorieCard(
+                        consumed: _totalCalories,
+                        goal: widget.user.dailyCalorieGoal,
+                        onTap: () => _navigateToRecordPage(),
+                      ),
 
-                        const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                        // 快捷餐次按钮
-                        MealButtons(
-                          mealStatus: _mealStatus,
-                          onMealTap: _onMealTap,
-                        ),
+                      // 快捷餐次按钮
+                      MealButtons(
+                        mealStatus: _mealStatus,
+                        onMealTap: _onMealTap,
+                      ),
 
-                        const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                        // 健康仪表盘
-                        HealthDashboard(
-                          waterCount: _waterCount,
-                          waterGoal: 8,
-                          onWaterTap: _showWaterDialog,
-                          exerciseMinutes: _exerciseMinutes,
-                          exerciseCalorie: _todayExerciseCalorie,
-                          onExerciseTap: _showExerciseDialog,
-                          currentWeight: _currentWeight,
-                          onWeightTap: _showWeightDialog,
-                        ),
+                      // 健康仪表盘
+                      HealthDashboard(
+                        waterCount: _waterCount,
+                        waterGoal: 8,
+                        onWaterTap: _showWaterDialog,
+                        exerciseMinutes: _exerciseMinutes,
+                        exerciseCalorie: _todayExerciseCalorie,
+                        onExerciseTap: _showExerciseDialog,
+                        currentWeight: _currentWeight,
+                        onWeightTap: _showWeightDialog,
+                      ),
 
-                        const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                        // 智能建议
-                        SmartSuggestions(
-                          consumed: _totalCalories,
-                          goal: widget.user.dailyCalorieGoal,
-                          waterCount: _waterCount,
-                          waterGoal: 8,
-                          exerciseMinutes: _exerciseMinutes,
-                          onAddExercise: _showExerciseDialog,
-                        ),
+                      // 智能建议
+                      SmartSuggestions(
+                        consumed: _totalCalories,
+                        goal: widget.user.dailyCalorieGoal,
+                        waterCount: _waterCount,
+                        waterGoal: 8,
+                        exerciseMinutes: _exerciseMinutes,
+                        onAddExercise: _showExerciseDialog,
+                      ),
 
-                        const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                        // 今日记录列表
-                        TodayRecordsList(
-                          records: _todayRecords,
-                          onViewAll: () => _navigateToRecordPage(),
-                        ),
+                      // 今日记录列表
+                      TodayRecordsList(
+                        records: _todayRecords,
+                        onViewAll: () => _navigateToRecordPage(),
+                      ),
 
-                        const SizedBox(height: 32),
-                      ],
-                    ),
+                      const SizedBox(height: 32),
+                    ],
                   ),
                 ],
               ),
