@@ -171,12 +171,18 @@ class SupabaseService {
   }
 
   // 添加运动记录
-  static Future<bool> addExerciseRecord(ExerciseRecord record) async {
+  static Future<(bool, String?)> addExerciseRecord(ExerciseRecord record) async {
     try {
       await client.from('exercise_records').insert(record.toJson());
-      return true;
+      return (true, null);
+    } on PostgrestException catch (e) {
+      // RLS 权限错误
+      if (e.code == '42501') {
+        return (false, '权限不足：${_accessToken == null ? "未登录" : "RLS策略问题"}');
+      }
+      return (false, '数据库错误: ${e.message}');
     } catch (e) {
-      return false;
+      return (false, '未知错误: $e');
     }
   }
 
@@ -216,9 +222,9 @@ class SupabaseService {
           .select('calorie')
           .eq('user_id', userId)
           .eq('date', dateStr);
-      
+
       if (data == null || data.isEmpty) return 0.0;
-      
+
       double total = 0.0;
       for (final item in data as List) {
         if (item != null && item['calorie'] != null) {
@@ -228,6 +234,58 @@ class SupabaseService {
       return total;
     } catch (e) {
       return 0.0;
+    }
+  }
+
+  // ===== 饮水记录 =====
+
+  // 保存饮水记录（更新当日饮水量）
+  static Future<bool> saveWaterRecord(String oderId, int count, DateTime date) async {
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+      // 先查询当日是否有记录
+      final existing = await client
+          .from('water_records')
+          .select()
+          .eq('user_id', oderId)
+          .eq('date', dateStr)
+          .maybeSingle();
+
+      if (existing != null) {
+        // 更新
+        await client.from('water_records').update({
+          'count': count,
+        }).eq('id', existing['id']);
+      } else {
+        // 新增
+        await client.from('water_records').insert({
+          'user_id': oderId,
+          'count': count,
+          'date': dateStr,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 获取指定日期饮水记录
+  static Future<int> getWaterRecord(String oderId, DateTime date) async {
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+      final data = await client
+          .from('water_records')
+          .select('count')
+          .eq('user_id', oderId)
+          .eq('date', dateStr)
+          .maybeSingle();
+
+      if (data == null) return 0;
+      return (data['count'] as num?)?.toInt() ?? 0;
+    } catch (e) {
+      return 0;
     }
   }
 }

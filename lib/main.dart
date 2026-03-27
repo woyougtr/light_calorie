@@ -1256,58 +1256,78 @@ class CheckInPage extends StatefulWidget {
 class _CheckInPageState extends State<CheckInPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<DateTime, List<String>> _checkInEvents = {};
+  Map<DateTime, List<String>> _checkInEvents = {}; // 日期 -> 打卡类型列表
   int _consecutiveDays = 0;
   int _totalCheckIns = 0;
-  
+
   // 饮水记录
   int _waterCount = 0;
   static const int _dailyWaterGoal = 8; // 每日8杯水目标
-  
+
   // 运动记录
-  final List<ExerciseRecord> _todayExercises = <ExerciseRecord>[];
+  List<ExerciseRecord> _todayExercises = [];
   double _todayExerciseCalorie = 0.0;
-  
-  // 本地运动记录缓存（用于测试，后续可迁移到数据库）
-  static final List<ExerciseRecord> _localExerciseRecords = [];
-  
+
+  // 选中日期的运动记录（用于日历选择其他日期时显示）
+  List<ExerciseRecord> _selectedDayExercises = [];
+
+  // 食物记录缓存（用于判断饮食打卡）
+  Map<DateTime, List<FoodRecord>> _foodRecordsCache = {};
+
   // 安全检查运动列表是否为空
-  bool get _hasExercises {
-    try {
-      return _todayExercises.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
+  bool get _hasExercises => _todayExercises.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadCheckInData();
-    _loadWaterData();
-    _loadExerciseData();
+    _loadAllData();
+  }
+
+  Future<void> _loadAllData() async {
+    await Future.wait([
+      _loadCheckInData(),
+      _loadWaterData(),
+      _loadExerciseData(),
+    ]);
   }
 
   Future<void> _loadCheckInData() async {
-    // 从数据库加载打卡记录
+    // 1. 加载打卡记录（用于日历显示）
     final checkIns = await SupabaseService.getCheckIns(widget.user.id);
     final Map<DateTime, List<String>> events = {};
-    
+
     for (final checkIn in checkIns) {
       final date = DateTime(checkIn.date.year, checkIn.date.month, checkIn.date.day);
       events[date] = events[date] ?? [];
       events[date]!.add('打卡');
     }
-    
-    // 计算连续打卡天数
+
+    // 2. 加载食物记录（用于判断饮食打卡）
+    // 获取最近30天的食物记录
+    final now = DateTime.now();
+    for (int i = 0; i < 30; i++) {
+      final day = now.subtract(Duration(days: i));
+      final records = await SupabaseService.getFoodRecords(widget.user.id, day);
+      if (records.isNotEmpty) {
+        final dateKey = DateTime(day.year, day.month, day.day);
+        _foodRecordsCache[dateKey] = records;
+        // 只要有食物记录就算饮食打卡
+        events[dateKey] = events[dateKey] ?? [];
+        if (!events[dateKey]!.contains('饮食')) {
+          events[dateKey]!.add('饮食');
+        }
+      }
+    }
+
+    // 计算连续打卡天数（基于饮食打卡）
     int consecutive = 0;
-    DateTime checkDate = DateTime.now();
-    while (events.containsKey(DateTime(checkDate.year, checkDate.month, checkDate.day))) {
+    DateTime checkDate = DateTime(now.year, now.month, now.day);
+    while (events.containsKey(checkDate)) {
       consecutive++;
       checkDate = checkDate.subtract(const Duration(days: 1));
     }
-    
+
     if (mounted) {
       setState(() {
         _checkInEvents = events;
@@ -1318,40 +1338,46 @@ class _CheckInPageState extends State<CheckInPage> {
   }
 
   Future<void> _loadWaterData() async {
-    // 加载今日饮水记录
-    final today = DateTime.now();
-    // 这里应该从数据库加载，先模拟
-    if (mounted) setState(() => _waterCount = 0);
+    // 从数据库加载今日饮水记录
+    final count = await SupabaseService.getWaterRecord(widget.user.id, DateTime.now());
+    if (mounted) {
+      setState(() => _waterCount = count);
+    }
   }
 
   Future<void> _saveWaterData() async {
-    // 保存饮水记录到数据库
-    // 这里需要添加 SupabaseService 方法
+    await SupabaseService.saveWaterRecord(widget.user.id, _waterCount, DateTime.now());
   }
 
   Future<void> _loadExerciseData() async {
-    _loadLocalExerciseData();
-  }
-  
-  void _loadLocalExerciseData() {
-    final today = DateTime.now();
-    final todayRecords = _localExerciseRecords.where((e) {
-      return e.date.year == today.year && 
-             e.date.month == today.month && 
-             e.date.day == today.day;
-    }).toList();
-    
+    // 从数据库加载今日运动记录
+    final exercises = await SupabaseService.getExerciseRecords(
+      widget.user.id,
+      date: DateTime.now(),
+    );
+
     double total = 0.0;
-    for (final r in todayRecords) {
+    for (final r in exercises) {
       total += r.calorie;
     }
-    
+
     if (mounted) {
       setState(() {
-        _todayExercises.clear();
-        _todayExercises.addAll(todayRecords);
+        _todayExercises = exercises;
         _todayExerciseCalorie = total;
       });
+    }
+  }
+
+  // 加载选中日期的运动记录（用于日历选择其他日期时）
+  Future<void> _loadSelectedDayExercise() async {
+    if (_selectedDay == null) return;
+    final exercises = await SupabaseService.getExerciseRecords(
+      widget.user.id,
+      date: _selectedDay!,
+    );
+    if (mounted) {
+      setState(() => _selectedDayExercises = exercises);
     }
   }
 
@@ -1359,22 +1385,34 @@ class _CheckInPageState extends State<CheckInPage> {
     return _checkInEvents[DateTime(day.year, day.month, day.day)] ?? [];
   }
 
+  // 检查选中日期是否有饮食打卡（基于食物记录）
+  bool _hasFoodForDay(DateTime day) {
+    final dateKey = DateTime(day.year, day.month, day.day);
+    final records = _foodRecordsCache[dateKey];
+    return records != null && records.isNotEmpty;
+  }
+
   // 检查选中日期是否有运动记录
   bool _hasExerciseForDay(DateTime day) {
-    return _localExerciseRecords.any((e) {
-      return e.date.year == day.year &&
-             e.date.month == day.month &&
-             e.date.day == day.day;
-    });
+    // 如果是今天，使用 _todayExercises
+    if (day.year == DateTime.now().year &&
+        day.month == DateTime.now().month &&
+        day.day == DateTime.now().day) {
+      return _hasExercises;
+    }
+    // 其他日期需要查询
+    return _selectedDayExercises.isNotEmpty;
   }
 
   // 获取选中日期的运动记录列表
   List<ExerciseRecord> _getExercisesForDay(DateTime day) {
-    return _localExerciseRecords.where((e) {
-      return e.date.year == day.year &&
-             e.date.month == day.month &&
-             e.date.day == day.day;
-    }).toList();
+    // 如果是今天，使用 _todayExercises
+    if (day.year == DateTime.now().year &&
+        day.month == DateTime.now().month &&
+        day.day == DateTime.now().day) {
+      return _todayExercises;
+    }
+    return _selectedDayExercises;
   }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
@@ -1382,6 +1420,8 @@ class _CheckInPageState extends State<CheckInPage> {
       _selectedDay = selectedDay;
       _focusedDay = focusedDay;
     });
+    // 加载选中日期的运动记录
+    _loadSelectedDayExercise();
   }
 
   // 显示运动打卡弹窗
@@ -1490,16 +1530,22 @@ class _CheckInPageState extends State<CheckInPage> {
                         date: DateTime.now(),
                         createdAt: DateTime.now(),
                       );
-                      
-                      // 先使用本地存储，方便测试
-                      _localExerciseRecords.add(record);
-                      
+
+                      // 保存到数据库
+                      final (success, errMsg) = await SupabaseService.addExerciseRecord(record);
+
                       if (mounted) {
                         Navigator.pop(context);
-                        _loadLocalExerciseData();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('已记录 ${selectedType.label} $duration 分钟')),
-                        );
+                        if (success) {
+                          _loadExerciseData();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('已记录 ${selectedType.label} $duration 分钟')),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('保存失败: $errMsg')),
+                          );
+                        }
                       }
                     } catch (e) {
                       if (mounted) {
@@ -1547,8 +1593,7 @@ class _CheckInPageState extends State<CheckInPage> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await _loadCheckInData();
-          _loadLocalExerciseData();
+          await _loadAllData();
         },
         child: ListView(padding: const EdgeInsets.all(16), children: [
           // 顶部统计行
