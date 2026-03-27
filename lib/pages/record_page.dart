@@ -97,25 +97,23 @@ class _RecordPageState extends State<RecordPage> {
                 _buildBottomSummary(),
               ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddFoodSheet(MealType.breakfast),
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('记一笔', style: TextStyle(color: Colors.white)),
-      ),
     );
   }
 
   Widget _buildBottomSummary() {
+    final progress = (_totalCalories / widget.user.dailyCalorieGoal).clamp(0.0, 1.0);
+    final isOver = _totalCalories > widget.user.dailyCalorieGoal;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -123,50 +121,71 @@ class _RecordPageState extends State<RecordPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // 拖动指示条
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // 热量数字
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
-                  '今日摄入',
+                  '$_totalCalories',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: isOver ? AppTheme.danger : AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '/ ${widget.user.dailyCalorieGoal}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'kcal',
                   style: TextStyle(
                     fontSize: 14,
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                Text(
-                  '$_totalCalories / ${widget.user.dailyCalorieGoal} kcal',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            // 进度条
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
-                value: (_totalCalories / widget.user.dailyCalorieGoal)
-                    .clamp(0.0, 1.0),
-                minHeight: 8,
+                value: progress,
+                minHeight: 10,
                 backgroundColor: AppTheme.divider,
                 valueColor: AlwaysStoppedAnimation(
-                  _totalCalories > widget.user.dailyCalorieGoal
-                      ? AppTheme.danger
-                      : AppColors.primary,
+                  isOver ? AppTheme.danger : AppColors.primary,
                 ),
               ),
             ),
             const SizedBox(height: 8),
+            // 剩余/超标提示
             Text(
-              _remainingCalories >= 0
-                  ? '剩余可用: $_remainingCalories kcal'
-                  : '已超标: ${-_remainingCalories} kcal',
+              isOver
+                  ? '已超标 ${-_remainingCalories} kcal'
+                  : '还可摄入 $_remainingCalories kcal',
               style: TextStyle(
                 fontSize: 13,
-                color: _remainingCalories >= 0
-                    ? AppTheme.success
-                    : AppTheme.danger,
+                fontWeight: FontWeight.w500,
+                color: isOver ? AppTheme.danger : AppTheme.success,
               ),
             ),
           ],
