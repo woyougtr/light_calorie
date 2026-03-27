@@ -54,13 +54,9 @@ class AppColors {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefsStorage = PreInitializedSharedPreferencesStorage();
   await Supabase.initialize(
     url: SupabaseService.url,
     anonKey: SupabaseService.key,
-    authOptions: const FlutterAuthClientOptions(
-      authFlowType: AuthFlowType.implicit,
-    ),
   );
   runApp(const LightCalorieApp());
 }

@@ -194,12 +194,21 @@ class SupabaseService {
   // 添加运动记录
   static Future<(bool, String?)> addExerciseRecord(ExerciseRecord record) async {
     try {
+      // 检查当前 session
+      final session = client.auth.currentSession;
+      if (session == null) {
+        return (false, '未登录：无有效会话');
+      }
       await client.from('exercise_records').insert(record.toJson());
       return (true, null);
     } on PostgrestException catch (e) {
       // RLS 权限错误
       if (e.code == '42501') {
-        return (false, '权限不足：${_accessToken == null ? "未登录" : "RLS策略问题"}');
+        return (false, '权限不足：RLS策略问题，请检查数据库权限设置');
+      }
+      // JWT 错误
+      if (e.message.contains('JWT') || e.message.contains('token')) {
+        return (false, '认证过期，请重新登录');
       }
       return (false, '数据库错误: ${e.message}');
     } catch (e) {
