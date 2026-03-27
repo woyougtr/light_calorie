@@ -70,13 +70,14 @@ class MealButtons extends StatelessWidget {
         onTap: () => onMealTap(type),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          height: 96, // 固定高度
           decoration: BoxDecoration(
             color: isCompleted ? accentColor : bgColor,
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             boxShadow: isCompleted ? AppTheme.cardShadow : null,
           ),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Stack(
                 alignment: Alignment.center,
@@ -116,17 +117,6 @@ class MealButtons extends StatelessWidget {
                   color: isCompleted ? Colors.white : AppTheme.textPrimary,
                 ),
               ),
-              if (isCompleted)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '已完成',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),

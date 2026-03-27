@@ -32,49 +32,53 @@ class HealthDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          // 饮水卡片
-          Expanded(
-            child: _buildDashboardCard(
-              title: '饮水',
-              icon: Icons.water_drop,
-              iconColor: AppTheme.info,
-              value: '$waterCount',
-              unit: '/$waterGoal 杯',
-              progress: waterCount / waterGoal,
-              onTap: onWaterTap,
+      child: IntrinsicHeight( // 让三个卡片等高
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 饮水卡片
+            Expanded(
+              child: _buildDashboardCard(
+                title: '饮水',
+                icon: Icons.water_drop,
+                iconColor: AppTheme.info,
+                value: '$waterCount',
+                unit: '/$waterGoal 杯',
+                subtitle: waterCount >= waterGoal ? '目标达成' : '再喝${waterGoal - waterCount}杯',
+                progress: waterCount / waterGoal,
+                onTap: onWaterTap,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          // 运动卡片
-          Expanded(
-            child: _buildDashboardCard(
-              title: '运动',
-              icon: Icons.directions_run,
-              iconColor: AppColors.secondary,
-              value: '$exerciseMinutes',
-              unit: '分钟',
-              subtitle: exerciseCalorie > 0 ? '消耗 ${exerciseCalorie.toInt()} 卡' : '今日未运动',
-              progress: exerciseMinutes > 0 ? (exerciseMinutes >= 30 ? 1.0 : exerciseMinutes / 30) : 0,
-              onTap: onExerciseTap,
+            const SizedBox(width: 12),
+            // 运动卡片
+            Expanded(
+              child: _buildDashboardCard(
+                title: '运动',
+                icon: Icons.directions_run,
+                iconColor: AppColors.secondary,
+                value: '$exerciseMinutes',
+                unit: '分钟',
+                subtitle: exerciseCalorie > 0 ? '消耗 ${exerciseCalorie.toInt()} 卡' : '今日未运动',
+                progress: exerciseMinutes > 0 ? (exerciseMinutes >= 30 ? 1.0 : exerciseMinutes / 30) : 0,
+                onTap: onExerciseTap,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          // 体重卡片
-          Expanded(
-            child: _buildDashboardCard(
-              title: '体重',
-              icon: Icons.monitor_weight,
-              iconColor: AppColors.primary,
-              value: currentWeight?.toStringAsFixed(1) ?? '--',
-              unit: 'kg',
-              subtitle: currentWeight != null ? '当前体重' : '未记录',
-              progress: currentWeight != null ? 1.0 : 0,
-              onTap: onWeightTap,
+            const SizedBox(width: 12),
+            // 体重卡片
+            Expanded(
+              child: _buildDashboardCard(
+                title: '体重',
+                icon: Icons.monitor_weight,
+                iconColor: AppColors.primary,
+                value: currentWeight?.toStringAsFixed(1) ?? '--',
+                unit: 'kg',
+                subtitle: currentWeight != null ? '当前体重' : '未记录',
+                progress: currentWeight != null ? 1.0 : 0,
+                onTap: onWeightTap,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
