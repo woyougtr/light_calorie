@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/app_colors.dart';
 import 'pages/auth_wrapper.dart';
@@ -6,6 +7,10 @@ import 'services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 初始化日期格式化（中文）
+  await initializeDateFormatting('zh_CN', null);
+
   await Supabase.initialize(
     url: SupabaseService.url,
     anonKey: SupabaseService.key,
