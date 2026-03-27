@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../config/app_colors.dart';
 import '../config/app_theme.dart';
 import '../data/foods.dart';
@@ -96,7 +95,10 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('EEEE, M月d日', 'zh_CN').format(DateTime.now());
+    // 安全地格式化日期，避免 LocaleDataException
+    final now = DateTime.now();
+    final weekDay = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][now.weekday - 1];
+    final dateStr = '$weekDay, ${now.month}月${now.day}日';
 
     return Scaffold(
       backgroundColor: AppTheme.background,
