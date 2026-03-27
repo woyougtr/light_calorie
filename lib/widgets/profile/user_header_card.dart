@@ -48,8 +48,8 @@ class UserHeaderCard extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  user.nickname?.isNotEmpty == true
-                      ? user.nickname!.substring(0, 1)
+                  (user.nickname?.isNotEmpty == true)
+                      ? user.nickname!.characters.first
                       : '👤',
                   style: const TextStyle(
                     fontSize: 36,
@@ -106,10 +106,11 @@ class UserHeaderCard extends StatelessWidget {
   }
 
   int _getLevel() {
-    if (consecutiveDays < 7) return 1;
-    if (consecutiveDays < 14) return 2;
-    if (consecutiveDays < 30) return 3;
-    if (consecutiveDays < 60) return 4;
+    final days = consecutiveDays;
+    if (days < 7) return 1;
+    if (days < 14) return 2;
+    if (days < 30) return 3;
+    if (days < 60) return 4;
     return 5;
   }
 }
