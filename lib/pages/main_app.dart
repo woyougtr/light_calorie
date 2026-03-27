@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../widgets/common/tab_bar.dart';
 import 'home_page.dart';
 import 'record_page.dart';
 import 'check_in_page.dart';
@@ -38,15 +39,9 @@ class _MainAppState extends State<MainApp> {
         CheckInPage(user: widget.user),
         ProfilePage(user: widget.user),
       ]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: _onNavChanged,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: '首页'),
-          NavigationDestination(icon: Icon(Icons.edit), label: '记录'),
-          NavigationDestination(icon: Icon(Icons.calendar_today), label: '打卡'),
-          NavigationDestination(icon: Icon(Icons.person), label: '我的'),
-        ],
+      bottomNavigationBar: CapsuleTabBar(
+        currentIndex: _currentIndex,
+        onTap: _onNavChanged,
       ),
     );
   }
