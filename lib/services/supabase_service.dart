@@ -483,4 +483,46 @@ class SupabaseService {
       return 0;
     }
   }
+
+  // ===== 注销账号 =====
+
+  /// 注销账号：删除用户所有数据
+  /// 返回 (success, errorMessage)
+  static Future<(bool, String?)> deleteAccount(String userId) async {
+    try {
+      // 1. 删除食物记录
+      await client.from('food_records').delete().eq('user_id', userId);
+
+      // 2. 删除打卡记录
+      await client.from('check_ins').delete().eq('user_id', userId);
+
+      // 3. 删除体重记录
+      await client.from('weight_records').delete().eq('user_id', userId);
+
+      // 4. 删除运动记录
+      await client.from('exercise_records').delete().eq('user_id', userId);
+
+      // 5. 删除饮水记录
+      await client.from('water_records').delete().eq('user_id', userId);
+
+      // 6. 删除用户配置
+      await client.from('profiles').delete().eq('id', userId);
+
+      // 7. 删除 Supabase Auth 用户
+      // 注意：这需要服务端权限，通常通过 Edge Function 或 Admin API 完成
+      // 这里我们调用 auth.admin.deleteUser 或标记用户为已删除
+      await client.auth.admin.deleteUser(userId);
+
+      // 8. 清除本地 session
+      await signOut();
+
+      return (true, null);
+    } on AuthException catch (e) {
+      return (false, '注销失败：${e.message}');
+    } on PostgrestException catch (e) {
+      return (false, '数据库错误：${e.message}');
+    } catch (e) {
+      return (false, '注销失败：$e');
+    }
+  }
 }

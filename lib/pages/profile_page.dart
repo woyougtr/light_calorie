@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../models/models.dart';
 import '../services/supabase_service.dart';
+import '../utils/toast.dart';
 import '../widgets/common/app_header.dart';
 import '../widgets/profile/achievement_badges.dart';
 import '../widgets/profile/settings_list.dart';
@@ -228,6 +229,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     onStatsTap: () {},
                     onExportTap: () {},
                     onHelpTap: () {},
+                    onDeleteAccountTap: () => _showDeleteAccountDialog(),
                   ),
                   const SizedBox(height: 24),
                   // 退出登录
@@ -295,5 +297,150 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
     );
+  }
+
+  void _showDeleteAccountDialog() {
+    // 第一步：确认是否了解后果
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(
+          Icons.warning_amber_rounded,
+          color: Colors.red,
+          size: 48,
+        ),
+        title: const Text(
+          '注销账号',
+          style: TextStyle(color: Colors.red),
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('注销账号将永久删除以下数据：'),
+            SizedBox(height: 12),
+            Text('• 个人资料和设置'),
+            Text('• 所有饮食记录'),
+            Text('• 体重变化记录'),
+            Text('• 运动打卡数据'),
+            Text('• 饮水记录和连续打卡'),
+            SizedBox(height: 12),
+            Text(
+              '此操作不可恢复，请谨慎操作！',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showConfirmDeleteDialog();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('我已了解，继续注销'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showConfirmDeleteDialog() {
+    // 第二步：输入确认文字
+    final TextEditingController confirmController = TextEditingController();
+    const String confirmText = '确认注销';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text(
+            '最终确认',
+            style: TextStyle(color: Colors.red),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('请输入 "确认注销" 以继续：'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: confirmController,
+                decoration: const InputDecoration(
+                  hintText: '确认注销',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: confirmController.text.trim() == confirmText
+                  ? () {
+                      Navigator.pop(context);
+                      _executeDeleteAccount();
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.red.withValues(alpha: 0.3),
+              ),
+              child: const Text('确认注销'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _executeDeleteAccount() async {
+    // 显示加载
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    final (success, error) = await SupabaseService.deleteAccount(widget.user.id);
+
+    // 关闭加载
+    if (mounted) Navigator.pop(context);
+
+    if (success) {
+      if (mounted) {
+        Toast.show(context, '账号已注销，感谢使用轻卡');
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginPage()),
+            (route) => false,
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        Toast.show(context, error ?? '注销失败，请稍后重试');
+      }
+    }
   }
 }

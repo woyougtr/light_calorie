@@ -11,6 +11,7 @@ class SettingsList extends StatelessWidget {
   final VoidCallback? onExportTap;
   final VoidCallback? onHelpTap;
   final VoidCallback? onLogoutTap;
+  final VoidCallback? onDeleteAccountTap;
 
   const SettingsList({
     super.key,
@@ -21,6 +22,7 @@ class SettingsList extends StatelessWidget {
     this.onExportTap,
     this.onHelpTap,
     this.onLogoutTap,
+    this.onDeleteAccountTap,
   });
 
   @override
@@ -69,7 +71,60 @@ class SettingsList extends StatelessWidget {
             title: '帮助与反馈',
             onTap: onHelpTap,
           ),
+          const Divider(height: 1, indent: 56),
+          _buildDangerItem(
+            icon: Icons.delete_forever_outlined,
+            title: '注销账号',
+            onTap: onDeleteAccountTap,
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDangerItem({
+    required IconData icon,
+    required String title,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: Colors.red,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: Colors.red.withValues(alpha: 0.5),
+            ),
+          ],
+        ),
       ),
     );
   }
