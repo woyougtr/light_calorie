@@ -12,7 +12,7 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage> {
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -25,25 +25,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   final _passwordFocus = FocusNode();
   final _confirmPasswordFocus = FocusNode();
   
-  AnimationController? _slideController;
-  Animation<Offset>? _slideAnimation;
-  
-  @override
-  void initState() {
-    super.initState();
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(-0.1, 0),
-    ).animate(CurvedAnimation(
-      parent: _slideController!,
-      curve: Curves.easeInOut,
-    ));
-  }
-  
   @override
   void dispose() {
     _emailController.dispose();
@@ -52,7 +33,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _emailFocus.dispose();
     _passwordFocus.dispose();
     _confirmPasswordFocus.dispose();
-    _slideController?.dispose();
     super.dispose();
   }
   
@@ -62,13 +42,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       _obscurePassword = true;
       _obscureConfirmPassword = true;
     });
-    // 清空确认密码
     _confirmPasswordController.clear();
-    
-    // 播放切换动画
-    _slideController?.forward().then((_) {
-      _slideController?.reverse();
-    });
   }
   
   Future<void> _submit() async {
@@ -194,28 +168,35 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              children: [
-                const SizedBox(height: 60),
-                // Logo 区域
-                _buildLogo(),
-                const SizedBox(height: 48),
-                // 标题
-                _buildTitle(),
-                const SizedBox(height: 48),
-                // 表单卡片
-                SlideTransition(
-                  position: _slideAnimation ?? AlwaysStoppedAnimation(Offset.zero),
-                  child: _buildFormCard(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 40),
+                      // Logo 区域
+                      _buildLogo(),
+                      const SizedBox(height: 48),
+                      // 标题
+                      _buildTitle(),
+                      const SizedBox(height: 48),
+                      // 表单卡片
+                      _buildFormCard(),
+                      const SizedBox(height: 24),
+                      // 切换登录/注册
+                      _buildToggleButton(),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 24),
-                // 切换登录/注册
-                _buildToggleButton(),
-                const SizedBox(height: 32),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
