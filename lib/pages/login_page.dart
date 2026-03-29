@@ -25,8 +25,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   final _passwordFocus = FocusNode();
   final _confirmPasswordFocus = FocusNode();
   
-  late AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
+  AnimationController? _slideController;
+  Animation<Offset>? _slideAnimation;
   
   @override
   void initState() {
@@ -39,7 +39,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       begin: Offset.zero,
       end: const Offset(-0.1, 0),
     ).animate(CurvedAnimation(
-      parent: _slideController,
+      parent: _slideController!,
       curve: Curves.easeInOut,
     ));
   }
@@ -52,7 +52,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _emailFocus.dispose();
     _passwordFocus.dispose();
     _confirmPasswordFocus.dispose();
-    _slideController.dispose();
+    _slideController?.dispose();
     super.dispose();
   }
   
@@ -66,8 +66,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _confirmPasswordController.clear();
     
     // 播放切换动画
-    _slideController.forward().then((_) {
-      _slideController.reverse();
+    _slideController?.forward().then((_) {
+      _slideController?.reverse();
     });
   }
   
@@ -207,7 +207,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 const SizedBox(height: 48),
                 // 表单卡片
                 SlideTransition(
-                  position: _slideAnimation,
+                  position: _slideAnimation ?? AlwaysStoppedAnimation(Offset.zero),
                   child: _buildFormCard(),
                 ),
                 const SizedBox(height: 24),
