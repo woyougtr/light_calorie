@@ -21,12 +21,13 @@ class TimelineView extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasRecords = recordsByMeal.values.any((list) => list.isNotEmpty);
 
-    if (!hasRecords) {
-      return _buildEmptyState();
-    }
-
     return Column(
       children: [
+        if (!hasRecords)
+          Padding(
+            padding: const EdgeInsets.only(top: 40, bottom: 20),
+            child: _buildEmptyStateHint(),
+          ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -37,21 +38,21 @@ class TimelineView extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyStateHint() {
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.restaurant_menu, size: 64, color: AppTheme.textHint),
-          const SizedBox(height: 16),
+          Icon(Icons.restaurant_menu, size: 48, color: AppTheme.textHint),
+          const SizedBox(height: 12),
           Text(
             '今天还没有记录饮食',
-            style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
+            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            '点击下方按钮开始记录',
-            style: TextStyle(fontSize: 14, color: AppTheme.textHint),
+            '点击下方餐次开始记录',
+            style: TextStyle(fontSize: 12, color: AppTheme.textHint),
           ),
         ],
       ),
