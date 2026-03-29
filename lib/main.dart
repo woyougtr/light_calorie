@@ -14,7 +14,17 @@ void main() async {
   await Supabase.initialize(
     url: SupabaseService.url,
     anonKey: SupabaseService.key,
+    authOptions: const FlutterAuthClientOptions(
+      // 自动刷新 token
+      autoRefreshToken: true,
+      // 使用本地存储持久化 session
+      authFlowType: AuthFlowType.pkce,
+    ),
   );
+  
+  // 初始化认证监听器，保持登录状态
+  SupabaseService.initAuthListener();
+  
   runApp(const LightCalorieApp());
 }
 

@@ -7,6 +7,47 @@ class SupabaseService {
 
   static String? _accessToken;
   static AppUser? _currentUser;
+  static bool _isInitialized = false;
+
+  /// 初始化认证监听，保持登录状态
+  static void initAuthListener() {
+    if (_isInitialized) return;
+    _isInitialized = true;
+    
+    client.auth.onAuthStateChange.listen((data) {
+      final session = data.session;
+      if (session != null) {
+        _accessToken = session.accessToken;
+        _currentUser = AppUser(
+          id: session.user.id,
+          email: session.user.email ?? '',
+          createdAt: DateTime.now(),
+        );
+        
+        // 如果 token 快过期了，自动刷新
+        if (session.expiresIn != null && session.expiresIn! < 300) {
+          refreshSession();
+        }
+      } else {
+        _accessToken = null;
+        _currentUser = null;
+      }
+    });
+  }
+
+  /// 刷新 session
+  static Future<bool> refreshSession() async {
+    try {
+      final response = await client.auth.refreshSession();
+      if (response.session != null) {
+        _accessToken = response.session!.accessToken;
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
 
   /// 将 Supabase Auth 错误转换为友好的中文提示
   static String _friendlyAuthError(String error) {
