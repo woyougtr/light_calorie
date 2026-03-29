@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 import '../models/models.dart';
 import '../services/supabase_service.dart';
+import '../utils/toast.dart';
 import 'main_app.dart';
 
 class LoginPage extends StatefulWidget {
@@ -21,26 +22,31 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    if (email.isEmpty || password.isEmpty) { _showMsg('请填写完整'); return; }
+    if (email.isEmpty || password.isEmpty) { _showMsg('请填写邮箱和密码'); return; }
     setState(() => _loading = true);
     try {
       AppUser? user;
       String? errMsg;
       if (_isLogin) {
         (user, errMsg) = await SupabaseService.signIn(email, password);
-        if (user == null) _showMsg(errMsg ?? '登录失败');
+        if (user == null) _showMsg(errMsg ?? '登录失败，请稍后重试');
         else if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainApp(user: user!)));
       } else {
-        if (password.length < 6) { _showMsg('密码至少6位'); setState(() => _loading = false); return; }
+        if (password.length < 6) { _showMsg('密码长度不能少于6位'); setState(() => _loading = false); return; }
         (user, errMsg) = await SupabaseService.signUp(email, password);
-        if (user == null) _showMsg(errMsg ?? '注册失败');
-        else if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainApp(user: user!)));
+        if (user == null) {
+          // user 为 null 时显示错误/提示信息（如需要邮箱确认）
+          _showMsg(errMsg ?? '注册失败，请稍后重试');
+        } else if (mounted) {
+          // user 不为 null 说明邮箱已确认或不需要确认，直接跳转
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainApp(user: user!)));
+        }
       }
-    } catch (e) { _showMsg('操作异常: $e'); }
+    } catch (e) { _showMsg('操作出现异常，请稍后重试'); }
     if (mounted) setState(() => _loading = false);
   }
 
-  void _showMsg(String msg) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg))); }
+  void _showMsg(String msg) { Toast.show(context, msg); }
 
   @override
   Widget build(BuildContext context) {

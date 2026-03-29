@@ -8,6 +8,54 @@ class SupabaseService {
   static String? _accessToken;
   static AppUser? _currentUser;
 
+  /// 将 Supabase Auth 错误转换为友好的中文提示
+  static String _friendlyAuthError(String error) {
+    final lower = error.toLowerCase();
+    
+    // 登录相关
+    if (lower.contains('invalid login credentials')) {
+      return '邮箱或密码错误，请检查后重试';
+    }
+    if (lower.contains('email not confirmed') || 
+        (lower.contains('email') && lower.contains('confirm'))) {
+      return '邮箱尚未确认，请查收邮件并点击确认链接';
+    }
+    
+    // 注册相关
+    if (lower.contains('user already registered') || 
+        lower.contains('already exists')) {
+      return '该邮箱已注册，请直接登录';
+    }
+    if (lower.contains('password should be at least') || 
+        lower.contains('password is too short')) {
+      return '密码长度不能少于6位';
+    }
+    if (lower.contains('unable to validate email') || 
+        lower.contains('invalid email')) {
+      return '邮箱格式不正确，请输入有效的邮箱地址';
+    }
+    if (lower.contains('email address is invalid')) {
+      return '邮箱格式不正确';
+    }
+    
+    // 通用错误
+    if (lower.contains('network') || lower.contains('connection')) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    if (lower.contains('timeout')) {
+      return '连接超时，请稍后重试';
+    }
+    if (lower.contains('rate limit')) {
+      return '操作过于频繁，请稍后再试';
+    }
+    if (lower.contains('server error')) {
+      return '服务器繁忙，请稍后重试';
+    }
+    
+    // 默认返回原文
+    return error;
+  }
+
   // 使用 Supabase 全局实例，确保会话状态正确持久化
   static SupabaseClient get client => Supabase.instance.client;
 
@@ -37,6 +85,18 @@ class SupabaseService {
 
         if (res.user != null) {
 
+          // 检查 session 是否存在：有 session 说明邮箱已确认或不需要确认，无 session 说明需要邮箱确认
+
+          if (res.session == null) {
+
+            // 需要邮箱确认
+
+            return (null, '注册成功！请去邮箱点击链接完成确认，然后再登录');
+
+          }
+
+          // 有 session，可以直接登录
+
           _accessToken = res.session?.accessToken;
 
           _currentUser = AppUser(
@@ -53,15 +113,15 @@ class SupabaseService {
 
         }
 
-        return (null, '注册失败');
+        return (null, '注册失败，请稍后重试');
 
       } on AuthException catch (e) {
 
-        return (null, e.message);
+        return (null, _friendlyAuthError(e.message));
 
       } catch (e) {
 
-        return (null, '网络异常');
+        return (null, '网络异常，请检查网络后重试');
 
       }
 
@@ -95,15 +155,15 @@ class SupabaseService {
 
         }
 
-        return (null, '登录失败');
+        return (null, '登录失败，请稍后重试');
 
       } on AuthException catch (e) {
 
-        return (null, e.message);
+        return (null, _friendlyAuthError(e.message));
 
       } catch (e) {
 
-        return (null, '网络异常');
+        return (null, '网络异常，请检查网络后重试');
 
       }
 
